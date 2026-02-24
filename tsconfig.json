@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "types": [
+      "jquery",
+      "lodash",
+      "toastr",
+      "type-fest",
+      "zod",
+      "jest"
+    ],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@util/*": ["util/*"]
+    },
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*", "@types/**/*", "*.d.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**"]
+}
