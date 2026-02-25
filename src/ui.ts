@@ -89,9 +89,12 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <label>当前世界书：</label>
           <select id="hs-worldbook-select" style="flex: 1;">
             <option value=""${!data.worldbook_name ? ' selected' : ''}>（未绑定）</option>
-            ${getWorldbookNames().map(name =>
-    `<option value="${escapeHtml(name)}" ${data.worldbook_name === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
-  ).join('')}
+            ${getWorldbookNames()
+              .map(
+                name =>
+                  `<option value="${escapeHtml(name)}" ${data.worldbook_name === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
+              )
+              .join('')}
           </select>
           <button id="hs-create-worldbook" class="menu_button" style="white-space: nowrap;">一键创建</button>
         </div>
@@ -207,11 +210,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <label>API 源：</label>
           <select id="hs-custom-api-source" style="width: 100%;">
             ${['openai']
-      .map(
-        s =>
-          `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
-      )
-      .join('')}
+              .map(
+                s =>
+                  `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
+              )
+              .join('')}
           </select>
         </div>
       </div>
@@ -445,7 +448,9 @@ async function openSettingsPopup(): Promise<void> {
       } else {
         for (const model of models) {
           const selected = model === currentModel ? ' selected' : '';
-          $select.append(`<option value="${escapeHtml(model)}"${selected}>${escapeHtml(model)}</option>`);
+          $select.append(
+            `<option value="${escapeHtml(model)}"${selected}>${escapeHtml(model)}</option>`
+          );
         }
         // 如果之前的模型不在列表中，选中第一个
         if (!models.includes(currentModel)) {

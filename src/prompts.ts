@@ -55,7 +55,9 @@ function getVolumeSummarySystemPrompt(): string {
 /** 获取当前生效的卷完结检测系统提示词 */
 function getVolumeCompletionCheckSystemPrompt(): string {
   const settings = getSettings();
-  return settings.custom_prompts.volume_completion_check_system || DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM;
+  return (
+    settings.custom_prompts.volume_completion_check_system || DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM
+  );
 }
 
 // ========== 提示词构建 ==========
