@@ -68,9 +68,9 @@ export function getVolumeSummaryPrompt(
 /** 卷完结检测系统提示词 */
 const VOLUME_COMPLETION_CHECK_SYSTEM = `你是一个故事分析助手。根据以下总结内容，判断当前这一卷故事是否已经达到了一个自然的段落结尾（如：一个章节结束、一个事件告一段落、场景大幅转换等）。
 
-只需回答"是"或"否"，不要做任何解释。
-- 回答"是"表示这一卷已经到了一个合适的断点，可以归档
-- 回答"否"表示故事仍在进行中，不适合在这里断开`;
+只需回答"114514"或"1919810"，不要做任何解释。
+- 回答"114514"表示这一卷已经到了一个合适的断点，可以归档
+- 回答"1919810"表示故事仍在进行中，不适合在这里断开`;
 
 /** 卷完结检测提示词 */
 export function getVolumeCompletionCheckPrompt(mini_summaries: string[]): {

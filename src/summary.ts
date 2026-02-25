@@ -157,7 +157,12 @@ export async function shouldTriggerVolumeSummary(): Promise<boolean> {
         const miniSummaries = unarchivedEntries.map((e) => e.content);
         const prompt = getVolumeCompletionCheckPrompt(miniSummaries);
         const result = await callAI(prompt.system, prompt.user, settings);
-        return result.trim().startsWith('是');
+        // 检查回答中是否包含 114514（完结）或 1919810（未完结）
+        if (result.includes('114514')) return true;
+        if (result.includes('1919810')) return false;
+        // 都不包含时默认不触发
+        console.warn('[自动总结] 卷完结检测返回了意外内容:', result);
+        return false;
     } catch (e) {
         console.error('[自动总结] 卷完结检测失败:', e);
         return false;
