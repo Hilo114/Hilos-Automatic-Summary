@@ -8,7 +8,7 @@
 import { getScriptData } from '@/config';
 import { taskQueue } from '@/queue';
 import { handleMiniSummary, performVolumeSummary } from '@/summary';
-import { ensureWorldbook, switchToCurrentCharWorldbook, syncMiniSummaryEnabled } from '@/worldbook';
+import { worldbookExists, syncMiniSummaryEnabled } from '@/worldbook';
 import { registerListeners } from '@/trigger';
 import { addMenuItem } from '@/ui';
 
@@ -43,22 +43,20 @@ $(() => {
       }
       console.log(`[自动总结] 当前角色卡: ${charName}`);
 
-      // 3. 切换世界书 - 卸载其他角色卡的总结世界书，加载当前角色卡的
-      await switchToCurrentCharWorldbook();
+      // 3. 同步小总结 enabled 状态（仅在世界书存在时）
+      if (worldbookExists()) {
+        await syncMiniSummaryEnabled();
+      } else {
+        console.log('[自动总结] 当前聊天未绑定世界书或世界书不存在，跳过同步');
+      }
 
-      // 4. 确保当前角色卡世界书存在
-      await ensureWorldbook();
-
-      // 5. 同步小总结 enabled 状态
-      await syncMiniSummaryEnabled();
-
-      // 6. 注册扩展菜单入口
+      // 4. 注册扩展菜单入口
       addMenuItem();
 
-      // 7. 注册事件监听
+      // 5. 注册事件监听
       registerListeners();
 
-      // 8. 聊天变更时重载
+      // 6. 聊天变更时重载
       reloadOnChatChange();
 
       console.log('[自动总结] 初始化完成');

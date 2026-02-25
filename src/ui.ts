@@ -4,8 +4,19 @@
  * - 提供各项设置与手动操作按钮
  */
 
-import { getScriptData, saveScriptData, type ScriptDataType } from '@/config';
+import { getScriptData, saveScriptData, DEFAULT_SETTINGS, type ScriptDataType } from '@/config';
 import { taskQueue } from '@/queue';
+import {
+  createWorldbookForChat,
+  bindWorldbookForChat,
+  worldbookExists,
+  getWorldbookName,
+} from '@/worldbook';
+import {
+  DEFAULT_MINI_SUMMARY_SYSTEM,
+  DEFAULT_VOLUME_SUMMARY_SYSTEM,
+  DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM,
+} from '@/prompts';
 
 // ========== 菜单注入 ==========
 
@@ -47,8 +58,44 @@ export function addMenuItem(): void {
 /** 构建设置弹窗 HTML */
 function buildSettingsHtml(data: ScriptDataType): string {
   return `
-    <div id="hilo-summary-settings" style="padding: 10px; max-height: 70vh; overflow-y: auto;">
+    <div id="hilo-summary-settings" style="padding: 10px;">
+      <style>
+        #hilo-summary-settings input[type="text"],
+        #hilo-summary-settings input[type="number"],
+        #hilo-summary-settings input[type="password"],
+        #hilo-summary-settings select,
+        #hilo-summary-settings textarea {
+          background-color: var(--SmartThemeSurface, #1c1c1c);
+          color: var(--SmartThemeBodyColor, #eee);
+          border: 1px solid var(--SmartThemeBorderColor, #444);
+          border-radius: 4px;
+          padding: 4px 8px;
+        }
+        #hilo-summary-settings input[type="text"]:focus,
+        #hilo-summary-settings input[type="number"]:focus,
+        #hilo-summary-settings input[type="password"]:focus,
+        #hilo-summary-settings select:focus,
+        #hilo-summary-settings textarea:focus {
+          border-color: var(--SmartThemeFocusColor, #888);
+          outline: none;
+        }
+      </style>
       <h3 style="margin-top: 0;">📖 自动总结设置</h3>
+
+      <!-- 世界书管理 -->
+      <div style="margin-bottom: 15px;">
+        <h4>世界书管理</h4>
+        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
+          <label>当前世界书：</label>
+          <select id="hs-worldbook-select" style="flex: 1;">
+            <option value=""${!data.worldbook_name ? ' selected' : ''}>（未绑定）</option>
+            ${getWorldbookNames().map(name =>
+    `<option value="${escapeHtml(name)}" ${data.worldbook_name === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
+  ).join('')}
+          </select>
+          <button id="hs-create-worldbook" class="menu_button" style="white-space: nowrap;">一键创建</button>
+        </div>
+      </div>
 
       <!-- 基本设置 -->
       <div style="margin-bottom: 15px;">
@@ -121,44 +168,68 @@ function buildSettingsHtml(data: ScriptDataType): string {
       <!-- 手动操作 -->
       <div style="margin-bottom: 15px;">
         <h4>手动操作</h4>
-        <div style="display: flex; gap: 8px;">
-          <button id="hs-manual-mini" class="menu_button">手动总结</button>
-          <button id="hs-manual-volume" class="menu_button">手动归档</button>
+        <div style="display: flex; gap: 8px; flex-wrap: nowrap;">
+          <button id="hs-manual-mini" class="menu_button" style="white-space: nowrap; flex: 1; padding: 5px 0;">手动总结</button>
+          <button id="hs-manual-volume" class="menu_button" style="white-space: nowrap; flex: 1; padding: 5px 0;">手动归档</button>
+          <button id="hs-manual-complete" class="menu_button" style="white-space: nowrap; flex: 1; padding: 5px 0;">手动补全</button>
         </div>
       </div>
 
-      <!-- 自定义 API -->
+      <!-- API 配置 -->
+      <div style="margin-bottom: 15px;">
+        <h4>API 配置</h4>
+        <div style="margin-bottom: 8px;">
+          <label>API URL：</label>
+          <input type="text" id="hs-custom-api-url" value="${escapeHtml(data.custom_api.apiurl)}" style="width: 100%;" placeholder="https://api.example.com/v1" />
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>API Key：</label>
+          <input type="password" id="hs-custom-api-key" value="${escapeHtml(data.custom_api.key)}" style="width: 100%;" placeholder="sk-..." />
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>模型：</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="hs-custom-api-model" style="flex: 1;">
+              ${data.custom_api.model ? `<option value="${escapeHtml(data.custom_api.model)}" selected>${escapeHtml(data.custom_api.model)}</option>` : '<option value="">(未选择)</option>'}
+            </select>
+            <button id="hs-fetch-models" class="menu_button" style="white-space: nowrap;">获取模型列表</button>
+          </div>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>API 源：</label>
+          <select id="hs-custom-api-source" style="width: 100%;">
+            ${['openai']
+      .map(
+        s =>
+          `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
+      )
+      .join('')}
+          </select>
+        </div>
+      </div>
+
+      <!-- 自定义提示词 -->
       <details style="margin-bottom: 15px;">
-        <summary><h4 style="display: inline;">自定义 API</h4></summary>
+        <summary><h4 style="display: inline;">自定义提示词</h4></summary>
         <div style="padding: 8px 0;">
           <div style="margin-bottom: 8px;">
-            <label>
-              <input type="checkbox" id="hs-custom-api-enabled" ${data.custom_api.enabled ? 'checked' : ''} />
-              启用自定义 API
-            </label>
+            <label>小总结系统提示词：</label>
+            <textarea id="hs-prompt-mini" rows="5" style="width: 100%; resize: vertical;" placeholder="留空使用默认提示词">${escapeHtml(data.custom_prompts.mini_summary_system)}</textarea>
+            <small style="color: #888;">（留空则使用默认提示词）</small>
           </div>
           <div style="margin-bottom: 8px;">
-            <label>API URL：</label>
-            <input type="text" id="hs-custom-api-url" value="${escapeHtml(data.custom_api.apiurl)}" style="width: 100%;" placeholder="https://api.example.com/v1" />
+            <label>大总结系统提示词：</label>
+            <textarea id="hs-prompt-volume" rows="5" style="width: 100%; resize: vertical;" placeholder="留空使用默认提示词">${escapeHtml(data.custom_prompts.volume_summary_system)}</textarea>
+            <small style="color: #888;">（留空则使用默认提示词）</small>
           </div>
           <div style="margin-bottom: 8px;">
-            <label>API Key：</label>
-            <input type="password" id="hs-custom-api-key" value="${escapeHtml(data.custom_api.key)}" style="width: 100%;" placeholder="sk-..." />
-          </div>
-          <div style="margin-bottom: 8px;">
-            <label>模型名称：</label>
-            <input type="text" id="hs-custom-api-model" value="${escapeHtml(data.custom_api.model)}" style="width: 100%;" placeholder="gpt-4" />
-          </div>
-          <div style="margin-bottom: 8px;">
-            <label>API 源：</label>
-            <select id="hs-custom-api-source" style="width: 100%;">
-              ${['openai']
-                .map(
-                  s =>
-                    `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
-                )
-                .join('')}
-            </select>
+            <label>卷完结检测系统提示词：</label>
+            <textarea id="hs-prompt-completion" rows="5" style="width: 100%; resize: vertical;" placeholder="留空使用默认提示词">${escapeHtml(data.custom_prompts.volume_completion_check_system)}</textarea>
+            <small style="color: #888; display: block; margin-top: 4px;">
+              （留空则使用默认提示词）<br/>
+              回答"114514"表示这一卷已经到了一个合适的断点，可以归档<br/>
+              回答"1919810"表示故事仍在进行中，不适合在这里断开
+            </small>
           </div>
         </div>
       </details>
@@ -232,11 +303,15 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     capture_start_tag: (($('#hs-capture-start-tag').val() as string) || '').trim(),
     capture_end_tag: (($('#hs-capture-end-tag').val() as string) || '').trim(),
     custom_api: {
-      enabled: $('#hs-custom-api-enabled').is(':checked'),
       apiurl: ($('#hs-custom-api-url').val() as string) || '',
       key: ($('#hs-custom-api-key').val() as string) || '',
       model: ($('#hs-custom-api-model').val() as string) || '',
       source: ($('#hs-custom-api-source').val() as string) || 'openai',
+    },
+    custom_prompts: {
+      mini_summary_system: (($('#hs-prompt-mini').val() as string) || '').trim(),
+      volume_summary_system: (($('#hs-prompt-volume').val() as string) || '').trim(),
+      volume_completion_check_system: (($('#hs-prompt-completion').val() as string) || '').trim(),
     },
     message_cleanup_regex: regexList,
   };
@@ -259,15 +334,17 @@ async function openSettingsPopup(): Promise<void> {
   const $dialog = $(`<div style="
     background: var(--SmartThemeBlurTintColor, #2b2b2b);
     border: 1px solid var(--SmartThemeBorderColor, #555);
-    border-radius: 10px; padding: 20px; min-width: 400px;
-    max-width: 600px; max-height: 80vh; overflow-y: auto;
+    border-radius: 10px; padding: 20px; width: 90vw;
+    min-width: 500px; max-width: 700px; max-height: 90vh; overflow-y: auto;
+    display: flex; flex-direction: column;
     color: var(--SmartThemeBodyColor, #ccc);
   "></div>`);
 
   const $buttons =
-    $(`<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px;">
-    <button id="hs-cancel" class="menu_button">取消</button>
-    <button id="hs-save" class="menu_button">保存</button>
+    $(`<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; flex-shrink: 0;">
+    <button id="hs-reset" class="menu_button" style="margin-right: auto; white-space: nowrap; padding: 5px 15px;">重置默认</button>
+    <button id="hs-cancel" class="menu_button" style="white-space: nowrap; padding: 5px 15px;">取消</button>
+    <button id="hs-save" class="menu_button" style="white-space: nowrap; padding: 5px 15px;">保存</button>
   </div>`);
 
   $dialog.append($popup).append($buttons);
@@ -279,6 +356,24 @@ async function openSettingsPopup(): Promise<void> {
     $overlay.remove();
   });
 
+  // 重置默认设置
+  $overlay.on('click', '#hs-reset', () => {
+    const currentData = getScriptData();
+    // 保留运行时元数据，重置用户设置
+    const resetData = {
+      ...DEFAULT_SETTINGS,
+      worldbook_name: currentData.worldbook_name,
+      current_volume: currentData.current_volume,
+      last_processed_message_id: currentData.last_processed_message_id,
+      volumes: currentData.volumes,
+    } as ScriptDataType;
+    saveScriptData(resetData);
+    toastr.success('已重置为默认设置');
+    $overlay.remove();
+    // 重新打开弹窗以刷新 UI
+    void openSettingsPopup();
+  });
+
   $overlay.on('click', '#hs-save', () => {
     const newSettings = collectSettingsFromPopup();
     const currentData = getScriptData();
@@ -286,6 +381,72 @@ async function openSettingsPopup(): Promise<void> {
     saveScriptData(merged as ScriptDataType);
     toastr.success('设置已保存');
     $overlay.remove();
+  });
+
+  // 世界书选择变更
+  $overlay.on('change', '#hs-worldbook-select', function () {
+    const selected = $(this).val() as string;
+    if (selected) {
+      bindWorldbookForChat(selected);
+      toastr.success(`已绑定世界书: ${selected}`);
+    } else {
+      // 解绑
+      const data = getScriptData();
+      data.worldbook_name = '';
+      saveScriptData(data);
+      toastr.info('已解除世界书绑定');
+    }
+  });
+
+  // 一键创建世界书
+  $overlay.on('click', '#hs-create-worldbook', async () => {
+    try {
+      const name = await createWorldbookForChat();
+      // 刷新下拉框
+      const $select = $('#hs-worldbook-select');
+      // 如果下拉框中没有该选项则添加
+      if ($select.find(`option[value="${escapeHtml(name)}"]`).length === 0) {
+        $select.append(`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`);
+      }
+      $select.val(name);
+      toastr.success(`已创建并绑定世界书: ${name}`);
+    } catch (e) {
+      toastr.error('创建世界书失败');
+      console.error('[自动总结] 创建世界书失败:', e);
+    }
+  });
+
+  // 获取模型列表
+  $overlay.on('click', '#hs-fetch-models', async () => {
+    const apiurl = ($('#hs-custom-api-url').val() as string) || '';
+    const key = ($('#hs-custom-api-key').val() as string) || '';
+    if (!apiurl) {
+      toastr.warning('请先填写 API URL');
+      return;
+    }
+    try {
+      toastr.info('正在获取模型列表...');
+      const models = await getModelList({ apiurl, key: key || undefined });
+      const $select = $('#hs-custom-api-model');
+      const currentModel = $select.val() as string;
+      $select.empty();
+      if (models.length === 0) {
+        $select.append('<option value="">(无可用模型)</option>');
+      } else {
+        for (const model of models) {
+          const selected = model === currentModel ? ' selected' : '';
+          $select.append(`<option value="${escapeHtml(model)}"${selected}>${escapeHtml(model)}</option>`);
+        }
+        // 如果之前的模型不在列表中，选中第一个
+        if (!models.includes(currentModel)) {
+          $select.val(models[0]);
+        }
+      }
+      toastr.success(`已获取 ${models.length} 个模型`);
+    } catch (e) {
+      toastr.error('获取模型列表失败');
+      console.error('[自动总结] 获取模型列表失败:', e);
+    }
   });
 
   // 手动总结
@@ -303,6 +464,54 @@ async function openSettingsPopup(): Promise<void> {
   $overlay.on('click', '#hs-manual-volume', () => {
     taskQueue.enqueue({ type: 'volume_summary' });
     toastr.info('已将大总结任务加入队列');
+  });
+
+  // 手动补全
+  $overlay.on('click', '#hs-manual-complete', async () => {
+    const data = getScriptData();
+    const lastId = getLastMessageId();
+
+    const startId = data.ignore_floors;
+    if (startId > lastId) {
+      toastr.warning('没有可以补全的楼层（都在忽略范围内）');
+      return;
+    }
+
+    const wbName = getWorldbookName();
+    if (!wbName) {
+      toastr.warning('当前聊天未绑定世界书，无法检查补全');
+      return;
+    }
+
+    toastr.info('正在检查缺失层数...');
+    try {
+      const wb = await getWorldbook(wbName);
+      const existingFloors = new Set<number>();
+      for (const entry of wb) {
+        const match = entry.name.match(/^\[小总结-楼层(\d+)\]$/);
+        if (match) {
+          existingFloors.add(parseInt(match[1]));
+        }
+      }
+
+      let count = 0;
+      for (let i = startId; i <= lastId; i++) {
+        if (!existingFloors.has(i)) {
+          taskQueue.enqueue({ type: 'mini_summary', message_id: i });
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        taskQueue.enqueue({ type: 'volume_summary' });
+        toastr.success(`检测到 ${count} 个缺失楼层，已全部加入补全队列，并在最后加入归档任务`);
+      } else {
+        toastr.info('所有楼层均已有对应小总结，无需补全');
+      }
+    } catch (e) {
+      toastr.error('获取世界书条目失败，无法补全');
+      console.error('[自动总结] 手动补全检查失败:', e);
+    }
   });
 
   // 添加正则

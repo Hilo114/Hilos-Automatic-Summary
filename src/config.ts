@@ -85,10 +85,9 @@ export const ScriptData = z
       .number()
       .transform(v => _.clamp(v, 0, 1000))
       .prefault(0),
-    /** 自定义 API 配置 */
+    /** API 配置 */
     custom_api: z
       .object({
-        enabled: z.boolean().prefault(false),
         apiurl: z.string().prefault(''),
         key: z.string().prefault(''),
         model: z.string().prefault(''),
@@ -109,8 +108,18 @@ export const ScriptData = z
     capture_start_tag: z.string().prefault(''),
     /** 内容捕获结束标签（提取到该标签之前的内容，为空则截取到消息末尾） */
     capture_end_tag: z.string().prefault(''),
+    /** 自定义提示词（空字符串表示使用默认） */
+    custom_prompts: z
+      .object({
+        mini_summary_system: z.string().prefault(''),
+        volume_summary_system: z.string().prefault(''),
+        volume_completion_check_system: z.string().prefault(''),
+      })
+      .prefault({}),
 
     // === 运行时元数据 ===
+    /** 当前聊天绑定的总结世界书名称（空字符串表示未绑定） */
+    worldbook_name: z.string().prefault(''),
     /** 当前卷号 */
     current_volume: z.coerce.number().prefault(1),
     /** 上次处理到的楼层 ID */
@@ -130,6 +139,9 @@ export const ScriptData = z
 
 export type ScriptDataType = z.output<typeof ScriptData>;
 
+/** 默认设置值（用于重置功能，不含运行时元数据） */
+export const DEFAULT_SETTINGS: Partial<ScriptDataType> = ScriptData.parse({});
+
 // ========== 脚本变量读写 ==========
 
 /** 获取脚本数据（设置 + 元数据） */
@@ -147,3 +159,4 @@ export function saveScriptData(data: ScriptDataType): void {
 export function getSettings(): ScriptDataType {
   return getScriptData();
 }
+

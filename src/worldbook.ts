@@ -1,8 +1,9 @@
 /**
  * 世界书操作
- * - 创建/读/写/切换/同步 enabled
+ * - 创建/读/写/绑定
  * - 小总结条目管理
  * - 卷条目管理
+ * - 世界书不存在时跳过执行
  */
 
 import {
@@ -14,48 +15,59 @@ import {
   ENTRY_DEFAULTS,
 } from '@/config';
 
-// ========== 世界书名称 ==========
+// ========== 世界书名称与存在性 ==========
 
-/** 返回当前角色卡的总结世界书名称 */
-export function getWorldbookName(): string {
-  const charName = getCurrentCharacterName();
-  if (!charName) {
-    throw new Error('[自动总结] 未打开角色卡，无法获取世界书名称');
-  }
-  return `${charName}[自动总结]`;
+/** 返回当前聊天绑定的总结世界书名称，未绑定则返回 null */
+export function getWorldbookName(): string | null {
+  const data = getScriptData();
+  return data.worldbook_name || null;
 }
 
-// ========== 世界书生命周期 ==========
-
-/** 确保当前角色卡的总结世界书存在，不存在则创建 */
-export async function ensureWorldbook(): Promise<void> {
+/** 检查当前绑定的世界书是否存在 */
+export function worldbookExists(): boolean {
   const name = getWorldbookName();
-  const existingNames = getWorldbookNames();
-  if (!existingNames.includes(name)) {
-    await createWorldbook(name, []);
-    console.log(`[自动总结] 已创建世界书: ${name}`);
-  }
+  if (!name) return false;
+  return getWorldbookNames().includes(name);
 }
 
-/**
- * 从全局世界书列表中移除其他角色卡的总结世界书，确保当前角色卡的在列表中
- */
-export async function switchToCurrentCharWorldbook(): Promise<void> {
-  const currentName = getWorldbookName();
-  const globalBooks = getGlobalWorldbookNames();
-  // 过滤掉其他角色卡的[自动总结]世界书，保留当前的
-  const filtered = globalBooks.filter(name => !name.endsWith('[自动总结]') || name === currentName);
-  if (!filtered.includes(currentName)) {
-    filtered.push(currentName);
+// ========== 世界书创建与绑定 ==========
+
+/** 一键创建世界书并绑定到当前聊天 */
+export async function createWorldbookForChat(name?: string): Promise<string> {
+  const charName = getCurrentCharacterName();
+  const worldbookName = name || `${charName || '未知'}[自动总结]`;
+
+  const existingNames = getWorldbookNames();
+  if (!existingNames.includes(worldbookName)) {
+    await createWorldbook(worldbookName, []);
+    console.log(`[自动总结] 已创建世界书: ${worldbookName}`);
   }
-  await rebindGlobalWorldbooks(filtered);
+
+  // 绑定到脚本数据
+  const data = getScriptData();
+  data.worldbook_name = worldbookName;
+  saveScriptData(data);
+
+  console.log(`[自动总结] 已绑定世界书: ${worldbookName}`);
+  return worldbookName;
+}
+
+/** 将已有世界书绑定到当前聊天 */
+export function bindWorldbookForChat(name: string): void {
+  const data = getScriptData();
+  data.worldbook_name = name;
+  saveScriptData(data);
+  console.log(`[自动总结] 已绑定世界书: ${name}`);
 }
 
 // ========== 小总结条目操作 ==========
 
 /** 获取指定楼层的小总结条目 */
 export async function getMiniSummaryEntry(message_id: number): Promise<WorldbookEntry | undefined> {
-  const worldbook = await getWorldbook(getWorldbookName());
+  const name = getWorldbookName();
+  if (!name || !worldbookExists()) return undefined;
+
+  const worldbook = await getWorldbook(name);
   const entryName = `[小总结-楼层${message_id}]`;
   return worldbook.find(e => e.name === entryName);
 }
@@ -63,8 +75,12 @@ export async function getMiniSummaryEntry(message_id: number): Promise<Worldbook
 /** 创建或替换指定楼层的小总结条目 */
 export async function upsertMiniSummaryEntry(message_id: number, content: string): Promise<void> {
   const worldbookName = getWorldbookName();
-  const entryName = `[小总结-楼层${message_id}]`;
+  if (!worldbookName || !worldbookExists()) {
+    console.warn('[自动总结] 世界书不存在，跳过写入小总结');
+    return;
+  }
 
+  const entryName = `[小总结-楼层${message_id}]`;
   const worldbook = await getWorldbook(worldbookName);
   const existing = worldbook.find(e => e.name === entryName);
 
@@ -99,8 +115,12 @@ export async function upsertMiniSummaryEntry(message_id: number, content: string
 /** 创建空占位小总结条目（同步阶段使用） */
 export async function createPlaceholderMiniSummary(message_id: number): Promise<void> {
   const worldbookName = getWorldbookName();
-  const entryName = `[小总结-楼层${message_id}]`;
+  if (!worldbookName || !worldbookExists()) {
+    console.warn('[自动总结] 世界书不存在，跳过创建占位小总结');
+    return;
+  }
 
+  const entryName = `[小总结-楼层${message_id}]`;
   const worldbook = await getWorldbook(worldbookName);
   const existing = worldbook.find(e => e.name === entryName);
 
@@ -124,7 +144,10 @@ export async function createPlaceholderMiniSummary(message_id: number): Promise<
 
 /** 获取所有未归档（非卷覆盖范围内）的小总结条目 */
 export async function getUnarchivedMiniSummaries(): Promise<WorldbookEntry[]> {
-  const worldbook = await getWorldbook(getWorldbookName());
+  const name = getWorldbookName();
+  if (!name || !worldbookExists()) return [];
+
+  const worldbook = await getWorldbook(name);
   const metadata = getScriptData();
 
   // 收集已归档的楼层 ID
@@ -147,6 +170,9 @@ export async function getUnarchivedMiniSummaries(): Promise<WorldbookEntry[]> {
 
 /** 根据楼层可见性和归档状态同步所有小总结的 enabled */
 export async function syncMiniSummaryEnabled(): Promise<void> {
+  const name = getWorldbookName();
+  if (!name || !worldbookExists()) return;
+
   const settings = getSettings();
   const lastId = getLastMessageId();
   const visibleThreshold = lastId - settings.visible_floors + 1;
@@ -160,7 +186,7 @@ export async function syncMiniSummaryEnabled(): Promise<void> {
     }
   }
 
-  await updateWorldbookWith(getWorldbookName(), worldbook => {
+  await updateWorldbookWith(name, worldbook => {
     for (const entry of worldbook) {
       const match = entry.name.match(/^\[小总结-楼层(\d+)\]$/);
       if (!match) continue;
@@ -191,6 +217,11 @@ export async function createVolumeEntry(
   content: string
 ): Promise<void> {
   const worldbookName = getWorldbookName();
+  if (!worldbookName || !worldbookExists()) {
+    console.warn('[自动总结] 世界书不存在，跳过创建卷条目');
+    return;
+  }
+
   const entryName = `[卷${volume}-楼层${start_id}~楼层${end_id}]`;
 
   await updateWorldbookWith(worldbookName, worldbook => {
@@ -231,6 +262,9 @@ export async function createVolumeEntry(
 
 /** 获取所有已有卷条目 */
 export async function getVolumes(): Promise<WorldbookEntry[]> {
-  const worldbook = await getWorldbook(getWorldbookName());
+  const name = getWorldbookName();
+  if (!name || !worldbookExists()) return [];
+
+  const worldbook = await getWorldbook(name);
   return worldbook.filter(entry => /^\[卷\d+-楼层\d+~楼层\d+\]$/.test(entry.name));
 }

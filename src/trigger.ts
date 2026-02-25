@@ -7,7 +7,7 @@
 
 import { getSettings } from '@/config';
 import { taskQueue } from '@/queue';
-import { createPlaceholderMiniSummary, syncMiniSummaryEnabled } from '@/worldbook';
+import { createPlaceholderMiniSummary, syncMiniSummaryEnabled, worldbookExists } from '@/worldbook';
 import { updateFloorVisibility } from '@/chat-manager';
 
 /** 小总结计数器（用于大总结检查间隔） */
@@ -36,6 +36,9 @@ async function onMessageReceived(message_id: number): Promise<void> {
 
   // 忽略前 N 层的消息
   if (message_id < settings.ignore_floors) return;
+
+  // 世界书不存在则跳过
+  if (!worldbookExists()) return;
 
   try {
     // === 同步阶段 ===

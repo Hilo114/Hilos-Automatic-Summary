@@ -14,6 +14,7 @@ import {
 } from '@/prompts';
 import {
   getWorldbookName,
+  worldbookExists,
   upsertMiniSummaryEntry,
   getUnarchivedMiniSummaries,
   getVolumes,
@@ -70,9 +71,9 @@ export function cleanMessage(message: string, settings: ScriptDataType): string 
 
 // ========== AI 生成辅助 ==========
 
-/** 构建 generateRaw 的自定义 API 配置 */
+/** 构建 generateRaw 的 API 配置 */
 function buildCustomApi(settings: ScriptDataType): Record<string, any> | undefined {
-  if (!settings.custom_api.enabled) return undefined;
+  if (!settings.custom_api.apiurl) return undefined;
   return {
     apiurl: settings.custom_api.apiurl,
     key: settings.custom_api.key,
@@ -87,31 +88,15 @@ async function callAI(
   userPrompt: string,
   settings: ScriptDataType
 ): Promise<string> {
-  try {
-    const result = await generateRaw({
-      should_silence: true,
-      custom_api: buildCustomApi(settings) as any,
-      ordered_prompts: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    });
-    return result;
-  } catch (e) {
-    // 自定义 API 失败时降级使用酒馆当前 API
-    if (settings.custom_api.enabled) {
-      console.warn('[自动总结] 自定义 API 失败，降级使用酒馆当前 API:', e);
-      const result = await generateRaw({
-        should_silence: true,
-        ordered_prompts: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-      });
-      return result;
-    }
-    throw e;
-  }
+  const result = await generateRaw({
+    should_silence: true,
+    custom_api: buildCustomApi(settings) as any,
+    ordered_prompts: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+  });
+  return result;
 }
 
 // ========== 小总结 ==========
@@ -119,7 +104,11 @@ async function callAI(
 /** 生成单条消息的小总结内容 */
 export async function generateMiniSummaryContent(message_id: number): Promise<string> {
   const settings = getSettings();
-  const worldbook = await getWorldbook(getWorldbookName());
+  const worldbookName = getWorldbookName();
+  if (!worldbookName) {
+    throw new Error('[自动总结] 未绑定世界书，无法生成小总结');
+  }
+  const worldbook = await getWorldbook(worldbookName);
 
   // 获取前 2 个小总结作为上下文
   const allMiniEntries = worldbook
@@ -161,6 +150,12 @@ export async function generateMiniSummaryContent(message_id: number): Promise<st
 
 /** 处理小总结任务 - 生成内容并写入已创建的条目 */
 export async function handleMiniSummary(message_id: number): Promise<void> {
+  // 世界书不存在则跳过
+  if (!worldbookExists()) {
+    console.warn('[自动总结] 世界书不存在，跳过小总结生成');
+    return;
+  }
+
   // 生成小总结内容
   const summary = await generateMiniSummaryContent(message_id);
 
@@ -229,6 +224,12 @@ export async function generateVolumeSummaryContent(
 
 /** 执行完整的大总结流程 */
 export async function performVolumeSummary(): Promise<void> {
+  // 世界书不存在则跳过
+  if (!worldbookExists()) {
+    console.warn('[自动总结] 世界书不存在，跳过大总结生成');
+    return;
+  }
+
   const data = getScriptData();
   const unarchivedEntries = await getUnarchivedMiniSummaries();
 
