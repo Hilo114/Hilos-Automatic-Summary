@@ -88,12 +88,19 @@ async function callAI(
   userPrompt: string,
   settings: ScriptDataType
 ): Promise<string> {
+  const useNoTrans = settings.no_trans_tag !== false;
+  const NO_TRANS = settings.no_trans_tag_value || '<|no-trans|>';
+  const wrapContent = (text: string) => {
+    if (!text || !text.trim()) return text;
+    return useNoTrans ? `${NO_TRANS}${text}` : text;
+  };
+
   const result = await generateRaw({
     should_silence: true,
     custom_api: buildCustomApi(settings) as any,
     ordered_prompts: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
+      { role: 'system', content: wrapContent(systemPrompt) },
+      { role: 'user', content: wrapContent(userPrompt) },
     ],
   });
   return result;

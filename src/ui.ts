@@ -163,6 +163,14 @@ function buildSettingsHtml(data: ScriptDataType): string {
           </div>
           <small style="color: #888;">（仅总结两个标签之间的内容，均留空则总结全部）</small>
         </div>
+        <div style="margin-bottom: 8px;">
+          <label>
+            <input type="checkbox" id="hs-no-trans-tag" ${data.no_trans_tag ? 'checked' : ''} />
+            防合并标记
+          </label>
+          <input type="text" id="hs-no-trans-tag-value" value="${escapeHtml(data.no_trans_tag_value)}" style="width: 100px; margin-left: 5px;" placeholder="<|no-trans|>" title="自定义防合并标记" />
+          <small style="color: #888; margin-left: 5px;">（kemini或noass脚本开）</small>
+        </div>
       </div>
 
       <!-- 手动操作 -->
@@ -302,6 +310,8 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     ignore_floors: parseInt($('#hs-ignore-floors').val() as string) || 0,
     capture_start_tag: (($('#hs-capture-start-tag').val() as string) || '').trim(),
     capture_end_tag: (($('#hs-capture-end-tag').val() as string) || '').trim(),
+    no_trans_tag: $('#hs-no-trans-tag').is(':checked'),
+    no_trans_tag_value: (($('#hs-no-trans-tag-value').val() as string) || '').trim(),
     custom_api: {
       apiurl: ($('#hs-custom-api-url').val() as string) || '',
       key: ($('#hs-custom-api-key').val() as string) || '',

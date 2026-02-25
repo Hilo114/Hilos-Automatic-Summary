@@ -108,6 +108,10 @@ export const ScriptData = z
     capture_start_tag: z.string().prefault(''),
     /** 内容捕获结束标签（提取到该标签之前的内容，为空则截取到消息末尾） */
     capture_end_tag: z.string().prefault(''),
+    /** 是否启用防合并标记（kemini/noass脚本用到） */
+    no_trans_tag: z.boolean().prefault(true),
+    /** 防合并标记内容 */
+    no_trans_tag_value: z.string().prefault('<|no-trans|>'),
     /** 自定义提示词（空字符串表示使用默认） */
     custom_prompts: z
       .object({
