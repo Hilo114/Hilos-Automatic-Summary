@@ -89,9 +89,12 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <label>当前世界书：</label>
           <select id="hs-worldbook-select" style="flex: 1;">
             <option value=""${!data.worldbook_name ? ' selected' : ''}>（未绑定）</option>
-            ${getWorldbookNames().map(name =>
-    `<option value="${escapeHtml(name)}" ${data.worldbook_name === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
-  ).join('')}
+            ${getWorldbookNames()
+              .map(
+                name =>
+                  `<option value="${escapeHtml(name)}" ${data.worldbook_name === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
+              )
+              .join('')}
           </select>
           <button id="hs-create-worldbook" class="menu_button" style="white-space: nowrap;">一键创建</button>
         </div>
@@ -202,11 +205,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <label>API 源：</label>
           <select id="hs-custom-api-source" style="width: 100%;">
             ${['openai']
-      .map(
-        s =>
-          `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
-      )
-      .join('')}
+              .map(
+                s =>
+                  `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
+              )
+              .join('')}
           </select>
         </div>
       </div>
@@ -317,8 +320,10 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     },
     custom_prompts: {
       mini_summary_system: miniPrompt === DEFAULT_MINI_SUMMARY_SYSTEM.trim() ? '' : miniPrompt,
-      volume_summary_system: volumePrompt === DEFAULT_VOLUME_SUMMARY_SYSTEM.trim() ? '' : volumePrompt,
-      volume_completion_check_system: completionPrompt === DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM.trim() ? '' : completionPrompt,
+      volume_summary_system:
+        volumePrompt === DEFAULT_VOLUME_SUMMARY_SYSTEM.trim() ? '' : volumePrompt,
+      volume_completion_check_system:
+        completionPrompt === DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM.trim() ? '' : completionPrompt,
     },
     message_cleanup_regex: regexList,
   };
@@ -335,7 +340,7 @@ async function openSettingsPopup(): Promise<void> {
     flex: '1',
     'overflow-y': 'auto',
     'min-height': '0',
-    'padding-right': '5px'
+    'padding-right': '5px',
   });
 
   // 使用酒馆的 callGenericPopup或创建简单弹窗
