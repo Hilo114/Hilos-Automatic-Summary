@@ -41,11 +41,12 @@ export function extractTaggedContent(message: string, startTag: string, endTag: 
   }
 
   if (matches.length === 0) {
-    const tagDesc = startTag && endTag
-      ? `<${startTag}> 和 <${endTag}> 之间`
-      : startTag
-        ? `<${startTag}> 之后`
-        : `<${endTag}> 之前`;
+    const tagDesc =
+      startTag && endTag
+        ? `<${startTag}> 和 <${endTag}> 之间`
+        : startTag
+          ? `<${startTag}> 之后`
+          : `<${endTag}> 之前`;
     console.warn(`[自动总结] 未在消息中找到 ${tagDesc} 的内容，将使用原始消息`);
     return message;
   }
@@ -151,7 +152,11 @@ export async function generateMiniSummaryContent(message_id: number): Promise<st
   const regexedMessage = formatAsTavernRegexedString(rawMessage, source, 'prompt');
 
   // 提取捕获标签内容
-  const extracted = extractTaggedContent(regexedMessage, settings.capture_start_tag, settings.capture_end_tag);
+  const extracted = extractTaggedContent(
+    regexedMessage,
+    settings.capture_start_tag,
+    settings.capture_end_tag
+  );
 
   const cleaned = cleanMessage(extracted, settings);
   const prompt = getMiniSummaryPrompt(cleaned, context);
