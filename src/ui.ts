@@ -196,12 +196,7 @@ function buildSettingsHtml(data: ScriptDataType): string {
         </div>
         <div style="margin-bottom: 8px;">
           <label>模型：</label>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <select id="hs-custom-api-model" style="flex: 1;">
-              ${data.custom_api.model ? `<option value="${escapeHtml(data.custom_api.model)}" selected>${escapeHtml(data.custom_api.model)}</option>` : '<option value="">(未选择)</option>'}
-            </select>
-            <button id="hs-fetch-models" class="menu_button" style="white-space: nowrap;">获取模型列表</button>
-          </div>
+          <input type="text" id="hs-custom-api-model" value="${escapeHtml(data.custom_api.model)}" style="width: 100%;" placeholder="输入模型名称，如 gpt-4o" />
         </div>
         <div style="margin-bottom: 8px;">
           <label>API 源：</label>
@@ -485,39 +480,6 @@ async function openSettingsPopup(): Promise<void> {
     } catch (e) {
       toastr.error('创建世界书失败');
       console.error('[自动总结] 创建世界书失败:', e);
-    }
-  });
-
-  // 获取模型列表
-  $overlay.on('click', '#hs-fetch-models', async () => {
-    const apiurl = ($('#hs-custom-api-url').val() as string) || '';
-    const key = ($('#hs-custom-api-key').val() as string) || '';
-    if (!apiurl) {
-      toastr.warning('请先填写 API URL');
-      return;
-    }
-    try {
-      toastr.info('正在获取模型列表...');
-      const models = await window.TavernHelper.getModelList({ apiurl, key: key || undefined });
-      const $select = $('#hs-custom-api-model');
-      const currentModel = $select.val() as string;
-      $select.empty();
-      if (models.length === 0) {
-        $select.append('<option value="">(无可用模型)</option>');
-      } else {
-        for (const model of models) {
-          const selected = model === currentModel ? ' selected' : '';
-          $select.append(`<option value="${escapeHtml(model)}"${selected}>${escapeHtml(model)}</option>`);
-        }
-        // 如果之前的模型不在列表中，选中第一个
-        if (!models.includes(currentModel)) {
-          $select.val(models[0]);
-        }
-      }
-      toastr.success(`已获取 ${models.length} 个模型`);
-    } catch (e) {
-      toastr.error('获取模型列表失败');
-      console.error('[自动总结] 获取模型列表失败:', e);
     }
   });
 
