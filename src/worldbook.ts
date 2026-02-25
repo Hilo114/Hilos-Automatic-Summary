@@ -43,7 +43,10 @@ export async function createWorldbookForChat(name?: string): Promise<string> {
     console.log(`[自动总结] 已创建世界书: ${worldbookName}`);
   }
 
-  // 绑定到脚本数据
+  // 1. 绑定到聊天文件（原生机制）
+  await rebindChatWorldbook('current', worldbookName);
+
+  // 2. 同时记录到脚本变量（供本脚本快速查询）
   const data = getScriptData();
   data.worldbook_name = worldbookName;
   saveScriptData(data);
