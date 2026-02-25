@@ -42,11 +42,12 @@ export function extractTaggedContent(message: string, startTag: string, endTag: 
   }
 
   if (matches.length === 0) {
-    const tagDesc = startTag && endTag
-      ? `<${startTag}> 和 <${endTag}> 之间`
-      : startTag
-        ? `<${startTag}> 之后`
-        : `<${endTag}> 之前`;
+    const tagDesc =
+      startTag && endTag
+        ? `<${startTag}> 和 <${endTag}> 之间`
+        : startTag
+          ? `<${startTag}> 之后`
+          : `<${endTag}> 之前`;
     console.warn(`[自动总结] 未在消息中找到 ${tagDesc} 的内容，将使用原始消息`);
     return message;
   }
@@ -147,7 +148,11 @@ export async function generateMiniSummaryContent(message_id: number): Promise<st
   const regexedMessage = formatAsTavernRegexedString(rawMessage, source, 'prompt');
 
   // 提取捕获标签内容
-  const extracted = extractTaggedContent(regexedMessage, settings.capture_start_tag, settings.capture_end_tag);
+  const extracted = extractTaggedContent(
+    regexedMessage,
+    settings.capture_start_tag,
+    settings.capture_end_tag
+  );
 
   const cleaned = cleanMessage(extracted, settings);
   const prompt = getMiniSummaryPrompt(cleaned, context);
@@ -274,7 +279,9 @@ export async function performVolumeSummary(): Promise<void> {
       start_id = parsedStart;
       end_id = parsedEnd;
     } else {
-      console.warn(`[自动总结] AI 输出的范围(摘要${parsedStart}-摘要${parsedEnd})无效，回退使用全范围`);
+      console.warn(
+        `[自动总结] AI 输出的范围(摘要${parsedStart}-摘要${parsedEnd})无效，回退使用全范围`
+      );
     }
   } else {
     console.warn('[自动总结] 卷总结中未找到有效的首尾范围标记，回退使用全范围');

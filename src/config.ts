@@ -163,4 +163,3 @@ export function saveScriptData(data: ScriptDataType): void {
 export function getSettings(): ScriptDataType {
   return getScriptData();
 }
-
