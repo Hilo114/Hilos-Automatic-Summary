@@ -247,7 +247,7 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <div id="hs-regex-list">
             ${data.message_cleanup_regex.map((r, i) => buildRegexRowHtml(r, i)).join('')}
           </div>
-          <button id="hs-add-regex" class="menu_button" style="margin-top: 5px;">+ 添加正则</button>
+          <button id="hs-add-regex" class="menu_button" style="white-space: nowrap; flex: 1; padding: 5px 0;">+ 添加正则</button>
         </div>
       </details>
     </div>
@@ -336,24 +336,20 @@ async function openSettingsPopup(): Promise<void> {
 
   const $popup = $(html);
 
-  // 使用酒馆的 callGenericPopup（如果可用）或创建简单弹窗
-  const $overlay = $(`<div id="hilo-summary-overlay" style="
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6); z-index: 9998;
-    display: flex; justify-content: center; align-items: center;
-  "></div>`);
+  $popup.css({
+    flex: '1',
+    'overflow-y': 'auto',
+    'min-height': '0',
+    'padding-right': '5px'
+  });
 
-  const $dialog = $(`<div style="
-    background: var(--SmartThemeBlurTintColor, #2b2b2b);
-    border: 1px solid var(--SmartThemeBorderColor, #555);
-    border-radius: 10px; padding: 20px; width: 90vw;
-    min-width: 500px; max-width: 700px; max-height: 90vh; overflow-y: auto;
-    display: flex; flex-direction: column;
-    color: var(--SmartThemeBodyColor, #ccc);
-  "></div>`);
+  // 使用酒馆的 callGenericPopup或创建简单弹窗
+  const $overlay = $(`<div id="hilo-summary-overlay"></div>`);
+
+  const $dialog = $(`<div id="hilo-summary-dialog"></div>`);
 
   const $buttons =
-    $(`<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; flex-shrink: 0;">
+    $(`<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; flex-shrink: 0; padding-top: 10px; border-top: 1px solid var(--SmartThemeBorderColor, #555);">
     <button id="hs-reset" class="menu_button" style="margin-right: auto; white-space: nowrap; padding: 5px 15px;">重置默认</button>
     <button id="hs-cancel" class="menu_button" style="white-space: nowrap; padding: 5px 15px;">取消</button>
     <button id="hs-save" class="menu_button" style="white-space: nowrap; padding: 5px 15px;">保存</button>
@@ -363,9 +359,73 @@ async function openSettingsPopup(): Promise<void> {
   $overlay.append($dialog);
   $('body').append($overlay);
 
+  const win = window.top || window;
+  const fitOverlay = () => {
+    const vp = win.visualViewport || {
+      width: win.innerWidth,
+      height: win.innerHeight,
+      offsetTop: 0,
+      offsetLeft: 0,
+    };
+    const w = vp.width || win.innerWidth;
+    const h = vp.height || win.innerHeight;
+    $overlay[0].style.cssText = `
+      position: fixed !important; top: ${vp.offsetTop || 0}px !important; left: ${vp.offsetLeft || 0}px !important;
+      width: ${w}px !important; height: ${h}px !important;
+      max-width: none !important; max-height: none !important; margin: 0 !important; padding: 0 !important;
+      z-index: 10000 !important; display: flex !important; align-items: center !important; justify-content: center !important;
+      background: rgba(0,0,0,0.6) !important;
+      overflow: hidden !important;
+    `;
+    const panel = $dialog[0];
+    if (panel && w <= 768) {
+      panel.style.cssText = `
+        background: var(--SmartThemeBlurTintColor, #2b2b2b) !important;
+        border: none !important;
+        border-radius: 0 !important; padding: 15px !important;
+        width: ${w}px !important; height: ${h}px !important;
+        max-width: none !important; max-height: none !important; margin: 0 !important;
+        display: flex !important; flex-direction: column !important;
+        color: var(--SmartThemeBodyColor, #ccc) !important;
+        box-sizing: border-box !important;
+      `;
+    } else if (panel) {
+      panel.style.cssText = `
+        background: var(--SmartThemeBlurTintColor, #2b2b2b) !important;
+        border: 1px solid var(--SmartThemeBorderColor, #555) !important;
+        border-radius: 10px !important; padding: 20px !important; width: 90vw !important;
+        min-width: 300px !important; max-width: 700px !important; max-height: 90vh !important;
+        display: flex !important; flex-direction: column !important;
+        color: var(--SmartThemeBodyColor, #ccc) !important;
+        box-sizing: border-box !important;
+      `;
+    }
+  };
+
+  fitOverlay();
+  const vpObj = win.visualViewport;
+  if (vpObj) {
+    vpObj.addEventListener('resize', fitOverlay);
+    vpObj.addEventListener('scroll', fitOverlay);
+  }
+  win.addEventListener('resize', fitOverlay);
+
+  const cleanupResize = () => {
+    if (vpObj) {
+      vpObj.removeEventListener('resize', fitOverlay);
+      vpObj.removeEventListener('scroll', fitOverlay);
+    }
+    win.removeEventListener('resize', fitOverlay);
+  };
+
+  const closeOverlay = () => {
+    cleanupResize();
+    $overlay.remove();
+  };
+
   // 事件绑定
   $overlay.on('click', '#hs-cancel', () => {
-    $overlay.remove();
+    closeOverlay();
   });
 
   // 重置默认设置
@@ -381,7 +441,7 @@ async function openSettingsPopup(): Promise<void> {
     } as ScriptDataType;
     saveScriptData(resetData);
     toastr.success('已重置为默认设置');
-    $overlay.remove();
+    closeOverlay();
     // 重新打开弹窗以刷新 UI
     void openSettingsPopup();
   });
@@ -392,7 +452,7 @@ async function openSettingsPopup(): Promise<void> {
     const merged = { ...currentData, ...newSettings };
     saveScriptData(merged as ScriptDataType);
     toastr.success('设置已保存');
-    $overlay.remove();
+    closeOverlay();
   });
 
   // 世界书选择变更
@@ -541,7 +601,7 @@ async function openSettingsPopup(): Promise<void> {
   // 点击遮罩关闭
   $overlay.on('click', e => {
     if (e.target === $overlay[0]) {
-      $overlay.remove();
+      closeOverlay();
     }
   });
 }
