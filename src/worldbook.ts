@@ -53,10 +53,15 @@ export async function createWorldbookForChat(name?: string): Promise<string> {
 }
 
 /** 将已有世界书绑定到当前聊天 */
-export function bindWorldbookForChat(name: string): void {
+export async function bindWorldbookForChat(name: string): Promise<void> {
+  // 1. 绑定到聊天文件（原生机制）
+  await rebindChatWorldbook('current', name);
+  
+  // 2. 同时记录到脚本变量（供本脚本快速查询）
   const data = getScriptData();
   data.worldbook_name = name;
   saveScriptData(data);
+  
   console.log(`[自动总结] 已绑定世界书: ${name}`);
 }
 

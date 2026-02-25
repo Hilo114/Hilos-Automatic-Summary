@@ -456,11 +456,16 @@ async function openSettingsPopup(): Promise<void> {
   });
 
   // 世界书选择变更
-  $overlay.on('change', '#hs-worldbook-select', function () {
+  $overlay.on('change', '#hs-worldbook-select', async function () {
     const selected = $(this).val() as string;
     if (selected) {
-      bindWorldbookForChat(selected);
-      toastr.success(`已绑定世界书: ${selected}`);
+      try {
+        await bindWorldbookForChat(selected);
+        toastr.success(`已绑定世界书: ${selected}`);
+      } catch (e) {
+        toastr.error(`绑定世界书失败: ${selected}`);
+        console.error('[自动总结] 绑定世界书失败:', e);
+      }
     } else {
       // 解绑
       const data = getScriptData();
