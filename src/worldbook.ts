@@ -11,8 +11,7 @@ import {
     saveScriptData,
     getMiniSummaryOrder,
     getVolumeOrder,
-    MINI_SUMMARY_DEFAULTS,
-    VOLUME_DEFAULTS,
+    ENTRY_DEFAULTS,
 } from '@/config';
 
 // ========== 世界书名称 ==========
@@ -87,14 +86,17 @@ export async function upsertMiniSummaryEntry(
         });
     } else {
         // 不存在则新建
+        const settings = getSettings();
         await createWorldbookEntries(worldbookName, [
             {
-                ...MINI_SUMMARY_DEFAULTS,
+                ...ENTRY_DEFAULTS,
                 name: entryName,
                 content,
                 position: {
-                    ...MINI_SUMMARY_DEFAULTS.position,
-                    order: getMiniSummaryOrder(message_id),
+                    type: 'at_depth',
+                    role: 'system',
+                    depth: settings.mini_summary_depth,
+                    order: getMiniSummaryOrder(message_id, settings.mini_summary_start_order),
                 },
             },
         ]);
@@ -110,14 +112,17 @@ export async function createPlaceholderMiniSummary(message_id: number): Promise<
     const existing = worldbook.find((e) => e.name === entryName);
 
     if (!existing) {
+        const settings = getSettings();
         await createWorldbookEntries(worldbookName, [
             {
-                ...MINI_SUMMARY_DEFAULTS,
+                ...ENTRY_DEFAULTS,
                 name: entryName,
                 content: '（总结生成中...）',
                 position: {
-                    ...MINI_SUMMARY_DEFAULTS.position,
-                    order: getMiniSummaryOrder(message_id),
+                    type: 'at_depth',
+                    role: 'system',
+                    depth: settings.mini_summary_depth,
+                    order: getMiniSummaryOrder(message_id, settings.mini_summary_start_order),
                 },
             },
         ]);
@@ -207,15 +212,17 @@ export async function createVolumeEntry(
         }
 
         // 2. 添加卷条目
+        const settings = getSettings();
         worldbook.push({
-            ...VOLUME_DEFAULTS,
+            ...ENTRY_DEFAULTS,
+            enabled: true,
             name: entryName,
             content,
             position: {
                 type: 'at_depth',
                 role: 'system',
-                depth: 9999,
-                order: getVolumeOrder(volume),
+                depth: settings.volume_summary_depth,
+                order: getVolumeOrder(volume, settings.volume_start_order),
             },
         } as WorldbookEntry);
 

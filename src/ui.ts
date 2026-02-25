@@ -80,6 +80,31 @@ function buildSettingsHtml(data: ScriptDataType): string {
             自动大总结
           </label>
         </div>
+        <div style="margin-bottom: 8px;">
+          <label>小总结注入深度：</label>
+          <input type="number" id="hs-mini-summary-depth" value="${data.mini_summary_depth}" min="0" max="99999" style="width: 100px;" />
+          <small style="color: #888;">（默认 9999）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>卷总结注入深度：</label>
+          <input type="number" id="hs-volume-summary-depth" value="${data.volume_summary_depth}" min="0" max="99999" style="width: 100px;" />
+          <small style="color: #888;">（默认 9999）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>小总结起始排序：</label>
+          <input type="number" id="hs-mini-start-order" value="${data.mini_summary_start_order}" min="0" max="99999" style="width: 100px;" />
+          <small style="color: #888;">（小总结 order 基数，默认 10000）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>卷总结起始排序：</label>
+          <input type="number" id="hs-volume-start-order" value="${data.volume_start_order}" min="0" max="99999" style="width: 100px;" />
+          <small style="color: #888;">（卷总结 order 基数，默认 100）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>忽略前 N 层：</label>
+          <input type="number" id="hs-ignore-floors" value="${data.ignore_floors}" min="0" max="1000" style="width: 80px;" />
+          <small style="color: #888;">（跳过前多少层不进行总结）</small>
+        </div>
       </div>
 
       <!-- 手动操作 -->
@@ -185,6 +210,11 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
         volume_token_threshold: parseInt($('#hs-volume-token-threshold').val() as string) || 8000,
         auto_mini_summary: $('#hs-auto-mini-summary').is(':checked'),
         auto_volume_summary: $('#hs-auto-volume-summary').is(':checked'),
+        mini_summary_depth: parseInt($('#hs-mini-summary-depth').val() as string) || 9999,
+        volume_summary_depth: parseInt($('#hs-volume-summary-depth').val() as string) || 9999,
+        mini_summary_start_order: parseInt($('#hs-mini-start-order').val() as string) || 10000,
+        volume_start_order: parseInt($('#hs-volume-start-order').val() as string) || 100,
+        ignore_floors: parseInt($('#hs-ignore-floors').val() as string) || 0,
         custom_api: {
             enabled: $('#hs-custom-api-enabled').is(':checked'),
             apiurl: ($('#hs-custom-api-url').val() as string) || '',

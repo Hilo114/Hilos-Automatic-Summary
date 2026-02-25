@@ -34,6 +34,9 @@ async function onMessageReceived(message_id: number): Promise<void> {
     if (msg.role === 'system') return;
     if (!msg.message || msg.message.trim() === '') return;
 
+    // 忽略前 N 层的消息
+    if (message_id < settings.ignore_floors) return;
+
     try {
         // === 同步阶段 ===
 

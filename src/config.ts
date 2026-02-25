@@ -9,26 +9,20 @@ import type { PartialDeep } from 'type-fest';
 
 // ========== 常量 ==========
 
-/** 小总结 order 基数，实际 order = MINI_SUMMARY_ORDER_BASE + message_id */
-export const MINI_SUMMARY_ORDER_BASE = 10000;
-
-/** 卷总结 order 基数，实际 order = VOLUME_ORDER_BASE + volume */
-export const VOLUME_ORDER_BASE = 100;
-
 /** 根据楼层 ID 计算小总结条目的 order 值 */
-export function getMiniSummaryOrder(message_id: number): number {
-    return MINI_SUMMARY_ORDER_BASE + message_id;
+export function getMiniSummaryOrder(message_id: number, base: number): number {
+    return base + message_id;
 }
 
 /** 根据卷号计算卷条目的 order 值 */
-export function getVolumeOrder(volume: number): number {
-    return VOLUME_ORDER_BASE + volume;
+export function getVolumeOrder(volume: number, base: number): number {
+    return base + volume;
 }
 
 // ========== 条目默认配置 ==========
 
-/** 小总结条目默认配置 */
-export const MINI_SUMMARY_DEFAULTS: PartialDeep<WorldbookEntry> = {
+/** 基础条目默认配置（不含 position，由调用方根据设置动态指定） */
+export const ENTRY_DEFAULTS: PartialDeep<WorldbookEntry> = {
     enabled: false,
     strategy: {
         type: 'constant',
@@ -36,17 +30,9 @@ export const MINI_SUMMARY_DEFAULTS: PartialDeep<WorldbookEntry> = {
         keys_secondary: { logic: 'and_any', keys: [] },
         scan_depth: 'same_as_global',
     },
-    position: { type: 'at_depth', role: 'system', depth: 9999, order: MINI_SUMMARY_ORDER_BASE },
     probability: 100,
     recursion: { prevent_incoming: true, prevent_outgoing: true, delay_until: null },
     effect: { sticky: null, cooldown: null, delay: null },
-};
-
-/** 卷总结条目默认配置 */
-export const VOLUME_DEFAULTS: PartialDeep<WorldbookEntry> = {
-    ...MINI_SUMMARY_DEFAULTS,
-    enabled: true,
-    position: { type: 'at_depth', role: 'system', depth: 9999, order: VOLUME_ORDER_BASE },
 };
 
 // ========== Zod Schema ==========
@@ -73,6 +59,31 @@ export const ScriptData = z.object({
     auto_mini_summary: z.boolean().prefault(true),
     /** 是否启用自动大总结 */
     auto_volume_summary: z.boolean().prefault(true),
+    /** 小总结注入深度（at_depth） */
+    mini_summary_depth: z.coerce
+        .number()
+        .transform((v) => _.clamp(v, 0, 99999))
+        .prefault(9999),
+    /** 卷总结注入深度（at_depth） */
+    volume_summary_depth: z.coerce
+        .number()
+        .transform((v) => _.clamp(v, 0, 99999))
+        .prefault(9999),
+    /** 小总结起始排序 order 基数 */
+    mini_summary_start_order: z.coerce
+        .number()
+        .transform((v) => _.clamp(v, 0, 99999))
+        .prefault(10000),
+    /** 卷总结起始排序 order 基数 */
+    volume_start_order: z.coerce
+        .number()
+        .transform((v) => _.clamp(v, 0, 99999))
+        .prefault(100),
+    /** 忽略前多少层消息不进行总结 */
+    ignore_floors: z.coerce
+        .number()
+        .transform((v) => _.clamp(v, 0, 1000))
+        .prefault(0),
     /** 自定义 API 配置 */
     custom_api: z
         .object({
