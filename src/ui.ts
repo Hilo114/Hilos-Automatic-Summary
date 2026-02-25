@@ -19,7 +19,8 @@ export function addMenuItem(): void {
         return;
     }
 
-    if ($(`#${MENU_ID}`, $extensionsMenu).length > 0) return;
+    // 移除旧的菜单项（脚本重载后旧的点击处理函数已失效）
+    $(`#${MENU_ID}`, $extensionsMenu).remove();
 
     const $item = $(`
     <div class="list-group-item flex-container flexGap5 interactable" id="${MENU_ID}" title="自动总结设置">
