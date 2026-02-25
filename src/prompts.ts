@@ -14,19 +14,19 @@ const MINI_SUMMARY_SYSTEM = `你是一个专业的故事总结助手。你的任
 
 /** 小总结提示词 */
 export function getMiniSummaryPrompt(
-    message: string,
-    context: string,
+  message: string,
+  context: string
 ): { system: string; user: string } {
-    let userPrompt = '';
-    if (context) {
-        userPrompt += `以下是之前的总结，供你了解上下文：\n${context}\n\n---\n\n`;
-    }
-    userPrompt += `请总结以下消息：\n\n${message}`;
+  let userPrompt = '';
+  if (context) {
+    userPrompt += `以下是之前的总结，供你了解上下文：\n${context}\n\n---\n\n`;
+  }
+  userPrompt += `请总结以下消息：\n\n${message}`;
 
-    return {
-        system: MINI_SUMMARY_SYSTEM,
-        user: userPrompt,
-    };
+  return {
+    system: MINI_SUMMARY_SYSTEM,
+    user: userPrompt,
+  };
 }
 
 /** 大总结系统提示词 */
@@ -43,26 +43,26 @@ const VOLUME_SUMMARY_SYSTEM = `你是一个专业的故事总结助手。你的�
 
 /** 大总结提示词 */
 export function getVolumeSummaryPrompt(
-    mini_summaries: string[],
-    previous_volumes: string[],
+  mini_summaries: string[],
+  previous_volumes: string[]
 ): { system: string; user: string } {
-    let userPrompt = '';
-    if (previous_volumes.length > 0) {
-        userPrompt += `以下是之前各卷的大总结，供你了解前情：\n\n`;
-        previous_volumes.forEach((vol, i) => {
-            userPrompt += `--- 第${i + 1}卷 ---\n${vol}\n\n`;
-        });
-        userPrompt += `===\n\n`;
-    }
-    userPrompt += `请将以下小总结合并为一个完整的卷总结：\n\n`;
-    mini_summaries.forEach((summary, i) => {
-        userPrompt += `[${i + 1}] ${summary}\n\n`;
+  let userPrompt = '';
+  if (previous_volumes.length > 0) {
+    userPrompt += `以下是之前各卷的大总结，供你了解前情：\n\n`;
+    previous_volumes.forEach((vol, i) => {
+      userPrompt += `--- 第${i + 1}卷 ---\n${vol}\n\n`;
     });
+    userPrompt += `===\n\n`;
+  }
+  userPrompt += `请将以下小总结合并为一个完整的卷总结：\n\n`;
+  mini_summaries.forEach((summary, i) => {
+    userPrompt += `[${i + 1}] ${summary}\n\n`;
+  });
 
-    return {
-        system: VOLUME_SUMMARY_SYSTEM,
-        user: userPrompt,
-    };
+  return {
+    system: VOLUME_SUMMARY_SYSTEM,
+    user: userPrompt,
+  };
 }
 
 /** 卷完结检测系统提示词 */
@@ -74,17 +74,17 @@ const VOLUME_COMPLETION_CHECK_SYSTEM = `你是一个故事分析助手。根据�
 
 /** 卷完结检测提示词 */
 export function getVolumeCompletionCheckPrompt(mini_summaries: string[]): {
-    system: string;
-    user: string;
+  system: string;
+  user: string;
 } {
-    let userPrompt = `以下是最近一段时间的小总结序列：\n\n`;
-    mini_summaries.forEach((summary, i) => {
-        userPrompt += `[${i + 1}] ${summary}\n\n`;
-    });
-    userPrompt += `请判断以上内容是否已经到了一个自然的段落结尾？`;
+  let userPrompt = `以下是最近一段时间的小总结序列：\n\n`;
+  mini_summaries.forEach((summary, i) => {
+    userPrompt += `[${i + 1}] ${summary}\n\n`;
+  });
+  userPrompt += `请判断以上内容是否已经到了一个自然的段落结尾？`;
 
-    return {
-        system: VOLUME_COMPLETION_CHECK_SYSTEM,
-        user: userPrompt,
-    };
+  return {
+    system: VOLUME_COMPLETION_CHECK_SYSTEM,
+    user: userPrompt,
+  };
 }
