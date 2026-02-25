@@ -222,21 +222,19 @@ function buildSettingsHtml(data: ScriptDataType): string {
         <div style="padding: 8px 0;">
           <div style="margin-bottom: 8px;">
             <label>小总结系统提示词：</label>
-            <textarea id="hs-prompt-mini" rows="5" style="width: 100%; resize: vertical;" placeholder="留空使用默认提示词">${escapeHtml(data.custom_prompts.mini_summary_system)}</textarea>
-            <small style="color: #888;">（留空则使用默认提示词）</small>
+            <textarea id="hs-prompt-mini" rows="5" style="width: 100%; resize: vertical;" placeholder="使用默认提示词">${escapeHtml(data.custom_prompts.mini_summary_system || DEFAULT_MINI_SUMMARY_SYSTEM)}</textarea>
+            <small style="color: #888;">（修改后即为自定义；恢复默认请清空提示词并保存）</small>
           </div>
           <div style="margin-bottom: 8px;">
             <label>大总结系统提示词：</label>
-            <textarea id="hs-prompt-volume" rows="5" style="width: 100%; resize: vertical;" placeholder="留空使用默认提示词">${escapeHtml(data.custom_prompts.volume_summary_system)}</textarea>
-            <small style="color: #888;">（留空则使用默认提示词）</small>
+            <textarea id="hs-prompt-volume" rows="5" style="width: 100%; resize: vertical;" placeholder="使用默认提示词">${escapeHtml(data.custom_prompts.volume_summary_system || DEFAULT_VOLUME_SUMMARY_SYSTEM)}</textarea>
+            <small style="color: #888;">（修改后即为自定义；恢复默认请清空提示词并保存）</small>
           </div>
           <div style="margin-bottom: 8px;">
             <label>卷完结检测系统提示词：</label>
-            <textarea id="hs-prompt-completion" rows="5" style="width: 100%; resize: vertical;" placeholder="留空使用默认提示词">${escapeHtml(data.custom_prompts.volume_completion_check_system)}</textarea>
+            <textarea id="hs-prompt-completion" rows="5" style="width: 100%; resize: vertical;" placeholder="使用默认提示词">${escapeHtml(data.custom_prompts.volume_completion_check_system || DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM)}</textarea>
             <small style="color: #888; display: block; margin-top: 4px;">
-              （留空则使用默认提示词）<br/>
-              回答"114514"表示这一卷已经到了一个合适的断点，可以归档<br/>
-              回答"1919810"表示故事仍在进行中，不适合在这里断开
+              （修改后即为自定义；恢复默认清空即可）
             </small>
           </div>
         </div>
@@ -297,6 +295,10 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     }
   });
 
+  const miniPrompt = (($('#hs-prompt-mini').val() as string) || '').trim();
+  const volumePrompt = (($('#hs-prompt-volume').val() as string) || '').trim();
+  const completionPrompt = (($('#hs-prompt-completion').val() as string) || '').trim();
+
   return {
     visible_floors: parseInt($('#hs-visible-floors').val() as string) || 20,
     check_interval: parseInt($('#hs-check-interval').val() as string) || 20,
@@ -319,9 +321,9 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
       source: ($('#hs-custom-api-source').val() as string) || 'openai',
     },
     custom_prompts: {
-      mini_summary_system: (($('#hs-prompt-mini').val() as string) || '').trim(),
-      volume_summary_system: (($('#hs-prompt-volume').val() as string) || '').trim(),
-      volume_completion_check_system: (($('#hs-prompt-completion').val() as string) || '').trim(),
+      mini_summary_system: miniPrompt === DEFAULT_MINI_SUMMARY_SYSTEM.trim() ? '' : miniPrompt,
+      volume_summary_system: volumePrompt === DEFAULT_VOLUME_SUMMARY_SYSTEM.trim() ? '' : volumePrompt,
+      volume_completion_check_system: completionPrompt === DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM.trim() ? '' : completionPrompt,
     },
     message_cleanup_regex: regexList,
   };
