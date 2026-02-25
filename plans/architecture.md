@@ -9,6 +9,8 @@
 - 大总结阈值：token 数超限 或 AI 识别一卷已完结
 - 自动管理楼层可见性（最近 N 楼显示，已总结的旧楼层隐藏）
 - 支持自定义 API 配置（URL、密钥、模型）用于总结请求
+- 支持酒馆正则过滤消息内容
+- 支持内容捕获标签（仅总结指定标签之间的内容）
 - 支持自定义正则清洗消息内容
 - 提供 UI 设置页面（通过酒馆扩展菜单入口打开）
 - 脚本加载时自动切换到当前角色卡的世界书，卸载其他角色卡的总结世界书
@@ -211,6 +213,10 @@ const ScriptData = z.object({
     flags: z.string().prefault('g'),
     replacement: z.string().prefault(''),
   })).prefault([]),
+  /** 内容捕获起始标签（提取该标签之后的内容，为空则总结全部内容） */
+  capture_start_tag: z.string().prefault(''),
+  /** 内容捕获结束标签（提取到该标签之前的内容，为空则截取到消息末尾） */
+  capture_end_tag: z.string().prefault(''),
   
   // === 运行时元数据 ===
   /** 当前卷号 */
@@ -501,6 +507,9 @@ export const taskQueue = new TaskQueue();
 #### `src/summary.ts` - 总结核心逻辑
 
 ```typescript
+/** 从消息中提取由起始标签和结束标签之间的内容 */
+function extractTaggedContent(message: string, startTag: string, endTag: string): string
+
 /** 清洗消息内容 - 使用用户自定义正则 */
 function cleanMessage(message: string): string
 
@@ -555,8 +564,16 @@ async function generateMiniSummaryContent(message_id: number): Promise<string> {
   const context = allMiniEntries.map(e => e.content).join('\n');
   
   // 获取并清洗当前楼层消息
-  const message = getChatMessages(message_id)[0].message;
-  const cleaned = cleanMessage(message);
+  const rawMessage = getChatMessages(message_id)[0].message;
+  
+  // 应用酒馆正则过滤
+  const source = messages[0].role === 'user' ? 'user_input' : 'ai_output';
+  const regexedMessage = formatAsTavernRegexedString(rawMessage, source, 'prompt');
+  
+  // 提取捕获标签内容
+  const extracted = extractTaggedContent(regexedMessage, settings.capture_start_tag, settings.capture_end_tag);
+  
+  const cleaned = cleanMessage(extracted);
   
   const prompt = getMiniSummaryPrompt(cleaned, context);
   return await generateRaw({ ... });
@@ -671,6 +688,7 @@ function addMenuItem(): void {
 | Token 阈值 | number input | 大总结触发阈值 |
 | 自动小总结 | checkbox | 是否自动生成小总结 |
 | 自动大总结 | checkbox | 是否自动归档为卷 |
+| 内容捕获标签 | 2 × text input | 起始标签 + 结束标签，仅总结两标签之间内容 |
 | **手动操作** | 按钮区域 | |
 | └ 手动总结 | button | 将最新 AI 回复的小总结任务加入队列 |
 | └ 手动归档 | button | 将大总结任务加入队列 |
@@ -718,7 +736,9 @@ flowchart TD
     Q[TaskQueue.processNext] --> T{取出队首任务}
 
     T -->|mini_summary| M1[获取当前楼层消息]
-    M1 --> M2[正则清洗消息内容]
+    M1 --> M1b[酒馆正则过滤]
+    M1b --> M1c[提取捕获标签内容]
+    M1c --> M2[用户自定义正则清洗]
     M2 --> M3[获取前 2 个小总结作为上下文]
     M3 --> M4[generateRaw 静默生成小总结]
     M4 --> M5[写入已存在的占位条目 content]

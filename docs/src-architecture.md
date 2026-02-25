@@ -78,6 +78,8 @@ index.ts          ← 入口，初始化 + 事件注册
 | `ignore_floors` | `number` | 0 | 忽略前 N 层消息不总结 |
 | `custom_api` | `object` | — | 自定义 API 配置（URL / Key / Model / Source） |
 | `message_cleanup_regex` | `array` | `[]` | 消息清洗正则列表 |
+| `capture_start_tag` | `string` | `''` | 内容捕获起始标签（提取该标签之后的内容，留空则总结全部） |
+| `capture_end_tag` | `string` | `''` | 内容捕获结束标签（提取到该标签之前的内容，留空则截取到末尾） |
 
 #### 运行时元数据
 
@@ -161,29 +163,33 @@ MESSAGE_RECEIVED(message_id)
 
 **职责**：消息清洗、AI 调用、小总结生成、大总结生成与触发检查。
 
-#### 消息清洗
+#### 消息预处理
 
-[`cleanMessage()`](../src/summary.ts:26)：按用户配置的正则列表依次对消息内容执行替换，用于去除不需要总结的内容（如 OOC 标记、状态栏代码块等）。
+消息在送入 AI 总结前依次经过三道处理：
+
+1. **酒馆正则过滤**：通过 `formatAsTavernRegexedString()` 应用酒馆正则（根据消息角色自动判断 `source`，`destination` 为 `'prompt'`）
+2. **内容捕获标签提取**：[`extractTaggedContent()`](../src/summary.ts:26) 从消息中提取 `<起始标签>` 和 `<结束标签>` 之间的内容，支持多段匹配并拼接；未配置标签或未匹配时使用原始消息
+3. **用户自定义正则清洗**：[`cleanMessage()`](../src/summary.ts:57) 按用户配置的正则列表依次执行替换，去除不需要总结的内容
 
 #### AI 生成辅助
 
-- [`buildCustomApi()`](../src/summary.ts:43)：构建自定义 API 配置对象
-- [`callAI()`](../src/summary.ts:54)：调用 `generateRaw()` 请求 AI 生成，支持自定义 API 降级到酒馆当前 API
+- [`buildCustomApi()`](../src/summary.ts:66)：构建自定义 API 配置对象
+- [`callAI()`](../src/summary.ts:77)：调用 `generateRaw()` 请求 AI 生成，支持自定义 API 降级到酒馆当前 API
 
 #### 小总结
 
 | 函数 | 说明 |
 |------|------|
-| [`generateMiniSummaryContent()`](../src/summary.ts:89) | 获取前 2 条小总结作为上下文 + 清洗当前楼层消息 → 调用 AI 生成 |
-| [`handleMiniSummary()`](../src/summary.ts:125) | 队列任务处理入口：生成内容 → 写入世界书条目 → 更新元数据 |
+| [`generateMiniSummaryContent()`](../src/summary.ts:120) | 获取前 2 条小总结作为上下文 + 酒馆正则过滤 + 标签提取 + 正则清洗 → 调用 AI 生成 |
+| [`handleMiniSummary()`](../src/summary.ts:162) | 队列任务处理入口：生成内容 → 写入世界书条目 → 更新元数据 |
 
 #### 大总结
 
 | 函数 | 说明 |
 |------|------|
-| [`shouldTriggerVolumeSummary()`](../src/summary.ts:141) | 判断是否触发大总结：token 阈值检查 **或** AI 判断是否到了自然段落结尾 |
-| [`generateVolumeSummaryContent()`](../src/summary.ts:168) | 收集未归档小总结 + 已有卷内容 → 调用 AI 生成卷总结 |
-| [`performVolumeSummary()`](../src/summary.ts:188) | 完整流程：检查条件 → 生成内容 → 创建卷条目并归档小总结 |
+| [`shouldTriggerVolumeSummary()`](../src/summary.ts:179) | 判断是否触发大总结：token 阈值检查 **或** AI 判断是否到了自然段落结尾 |
+| [`generateVolumeSummaryContent()`](../src/summary.ts:211) | 收集未归档小总结 + 已有卷内容 → 调用 AI 生成卷总结 |
+| [`performVolumeSummary()`](../src/summary.ts:231) | 完整流程：检查条件 → 生成内容 → 创建卷条目并归档小总结 |
 
 ---
 
@@ -282,7 +288,7 @@ MESSAGE_RECEIVED(message_id)
 
 | 区域 | 内容 |
 |------|------|
-| **基本设置** | 显示楼层数、检查间隔、Token 阈值、自动开关、注入深度、排序基数、忽略楼层数 |
+| **基本设置** | 显示楼层数、检查间隔、Token 阈值、自动开关、注入深度、排序基数、忽略楼层数、内容捕获标签（起始/结束） |
 | **手动操作** | "手动总结"按钮 → 对最新楼层入队小总结任务；"手动归档"按钮 → 入队大总结任务 |
 | **自定义 API**（折叠） | API URL / Key / 模型 / 源 的配置 |
 | **消息清洗正则**（折叠） | 动态增删正则规则行 |
@@ -309,7 +315,11 @@ trigger.ts: onMessageReceived()
          queue.ts: processNext()
               ↓
          summary.ts: handleMiniSummary()
-              ├── generateMiniSummaryContent()  → 清洗消息 + AI 生成
+              ├── generateMiniSummaryContent()
+              │     ├── formatAsTavernRegexedString()  → 酒馆正则过滤
+              │     ├── extractTaggedContent()         → 标签内容提取
+              │     ├── cleanMessage()                 → 用户正则清洗
+              │     └── callAI()                       → AI 生成
               ├── upsertMiniSummaryEntry()      → 写入世界书
               └── saveScriptData()              → 更新 last_processed_message_id
 ```
