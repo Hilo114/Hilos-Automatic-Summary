@@ -187,7 +187,11 @@ export async function shouldTriggerVolumeSummary(): Promise<boolean> {
 
   // AI 判断是否一卷已完结
   try {
-    const miniSummaries = unarchivedEntries.map(e => e.content);
+    const miniSummaries = unarchivedEntries.map(e => {
+      const match = e.name.match(/楼层(\d+)/);
+      const id = match ? match[1] : '?';
+      return `摘要${id}\n${e.content}`;
+    });
     const prompt = getVolumeCompletionCheckPrompt(miniSummaries);
     const result = await callAI(prompt.system, prompt.user, settings);
     // 检查回答中是否包含 114514（完结）或 1919810（未完结）
@@ -209,7 +213,11 @@ export async function generateVolumeSummaryContent(
   const settings = getSettings();
   const volumes = await getVolumes();
 
-  const miniContents = mini_summaries.map(e => e.content);
+  const miniContents = mini_summaries.map(e => {
+    const match = e.name.match(/楼层(\d+)/);
+    const id = match ? match[1] : '?';
+    return `摘要${id}\n${e.content}`;
+  });
   const previousVolumeContents = volumes
     .sort((a, b) => {
       const aVol = parseInt(a.name.match(/卷(\d+)/)![1]);
@@ -244,14 +252,32 @@ export async function performVolumeSummary(): Promise<void> {
     .map(e => parseInt(e.name.match(/楼层(\d+)/)![1]))
     .sort((a, b) => a - b);
 
-  const start_id = ids[0];
-  const end_id = ids[ids.length - 1];
+  let start_id = ids[0];
+  let end_id = ids[ids.length - 1];
 
   // 生成大总结
   const content = await generateVolumeSummaryContent(unarchivedEntries);
 
+  // 尝试提取设定的范围
+  const match = content.match(/摘要(\d+)-摘要(\d+)/);
+  if (match) {
+    const parsedStart = parseInt(match[1]);
+    const parsedEnd = parseInt(match[2]);
+    if (parsedStart <= parsedEnd) {
+      start_id = parsedStart;
+      end_id = parsedEnd;
+    } else {
+      console.warn(`[自动总结] AI 输出的范围(摘要${parsedStart}-摘要${parsedEnd})无效，回退使用全范围`);
+    }
+  } else {
+    console.warn('[自动总结] 卷总结中未找到有效的首尾范围标记，回退使用全范围');
+  }
+
+  // 清除结尾的指定标记行并存入
+  const finalContent = content.replace(/\s*摘要\d+-摘要\d+\s*$/, '').trim();
+
   // 创建卷条目并关闭对应小总结
-  await createVolumeEntry(data.current_volume, start_id, end_id, content);
+  await createVolumeEntry(data.current_volume, start_id, end_id, finalContent);
 
   console.log(`[自动总结] 已归档卷${data.current_volume}: 楼层${start_id}~楼层${end_id}`);
 }
