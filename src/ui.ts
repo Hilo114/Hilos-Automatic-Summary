@@ -107,8 +107,14 @@ function buildSettingsHtml(data: ScriptDataType): string {
         </div>
         <div style="margin-bottom: 8px;">
           <label>内容捕获标签：</label>
-          <input type="text" id="hs-capture-tag" value="${escapeHtml(data.capture_tag)}" style="width: 120px;" placeholder="如 content" />
-          <small style="color: #888;">（仅总结 &lt;标签&gt;…&lt;/标签&gt; 内的内容，留空则总结全部）</small>
+          <div style="display: flex; gap: 5px; align-items: center; margin-top: 4px;">
+            <span>&lt;</span>
+            <input type="text" id="hs-capture-start-tag" value="${escapeHtml(data.capture_start_tag)}" style="width: 100px;" placeholder="起始标签" />
+            <span>&gt; … &lt;</span>
+            <input type="text" id="hs-capture-end-tag" value="${escapeHtml(data.capture_end_tag)}" style="width: 100px;" placeholder="结束标签" />
+            <span>&gt;</span>
+          </div>
+          <small style="color: #888;">（仅总结两个标签之间的内容，均留空则总结全部）</small>
         </div>
       </div>
 
@@ -223,7 +229,8 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     mini_summary_start_order: parseInt($('#hs-mini-start-order').val() as string) || 10000,
     volume_start_order: parseInt($('#hs-volume-start-order').val() as string) || 100,
     ignore_floors: parseInt($('#hs-ignore-floors').val() as string) || 0,
-    capture_tag: (($('#hs-capture-tag').val() as string) || '').trim(),
+    capture_start_tag: (($('#hs-capture-start-tag').val() as string) || '').trim(),
+    capture_end_tag: (($('#hs-capture-end-tag').val() as string) || '').trim(),
     custom_api: {
       enabled: $('#hs-custom-api-enabled').is(':checked'),
       apiurl: ($('#hs-custom-api-url').val() as string) || '',

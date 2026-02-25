@@ -105,8 +105,10 @@ export const ScriptData = z
         })
       )
       .prefault([]),
-    /** 内容捕获标签（仅总结由该标签包裹的内容，为空则总结全部内容） */
-    capture_tag: z.string().prefault(''),
+    /** 内容捕获起始标签（提取该标签之后的内容，为空则总结全部内容） */
+    capture_start_tag: z.string().prefault(''),
+    /** 内容捕获结束标签（提取到该标签之前的内容，为空则截取到消息末尾） */
+    capture_end_tag: z.string().prefault(''),
 
     // === 运行时元数据 ===
     /** 当前卷号 */

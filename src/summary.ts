@@ -22,12 +22,15 @@ import {
 
 // ========== 消息清洗 ==========
 
-/** 从消息中提取由捕获标签包裹的内容，若未配置标签或未匹配到则返回原文 */
-export function extractTaggedContent(message: string, tag: string): string {
-  if (!tag) return message;
+/** 从消息中提取由起始标签和结束标签之间的内容，若未配置标签或未匹配到则返回原文 */
+export function extractTaggedContent(message: string, startTag: string, endTag: string): string {
+  if (!startTag && !endTag) return message;
 
-  // 构建匹配正则：匹配所有 <tag>...</tag> 之间的内容（支持多段、跨行）
-  const regex = new RegExp(`<${_.escapeRegExp(tag)}>([\\s\\S]*?)</${_.escapeRegExp(tag)}>`, 'g');
+  // 构建匹配正则
+  const startPattern = startTag ? `<${_.escapeRegExp(startTag)}>` : '^';
+  const endPattern = endTag ? `<${_.escapeRegExp(endTag)}>` : '$';
+  const regex = new RegExp(`${startPattern}([\\s\\S]*?)${endPattern}`, 'g');
+
   const matches: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = regex.exec(message)) !== null) {
@@ -38,7 +41,12 @@ export function extractTaggedContent(message: string, tag: string): string {
   }
 
   if (matches.length === 0) {
-    console.warn(`[自动总结] 未在消息中找到 <${tag}> 标签包裹的内容，将使用原始消息`);
+    const tagDesc = startTag && endTag
+      ? `<${startTag}> 和 <${endTag}> 之间`
+      : startTag
+        ? `<${startTag}> 之后`
+        : `<${endTag}> 之前`;
+    console.warn(`[自动总结] 未在消息中找到 ${tagDesc} 的内容，将使用原始消息`);
     return message;
   }
 
@@ -143,7 +151,7 @@ export async function generateMiniSummaryContent(message_id: number): Promise<st
   const regexedMessage = formatAsTavernRegexedString(rawMessage, source, 'prompt');
 
   // 提取捕获标签内容
-  const extracted = extractTaggedContent(regexedMessage, settings.capture_tag);
+  const extracted = extractTaggedContent(regexedMessage, settings.capture_start_tag, settings.capture_end_tag);
 
   const cleaned = cleanMessage(extracted, settings);
   const prompt = getMiniSummaryPrompt(cleaned, context);
