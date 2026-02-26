@@ -88,11 +88,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
         <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
           <label>当前世界书：</label>
           <select id="hs-worldbook-select" style="flex: 1;">
-            <option value=""${!data.worldbook_name ? ' selected' : ''}>（未绑定）</option>
+            <option value=""${!getWorldbookName() ? ' selected' : ''}>（未绑定）</option>
             ${getWorldbookNames()
               .map(
                 name =>
-                  `<option value="${escapeHtml(name)}" ${data.worldbook_name === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
+                  `<option value="${escapeHtml(name)}" ${getWorldbookName() === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
               )
               .join('')}
           </select>
@@ -431,14 +431,8 @@ async function openSettingsPopup(): Promise<void> {
   // 重置默认设置
   $overlay.on('click', '#hs-reset', () => {
     const currentData = getScriptData();
-    // 保留运行时元数据，重置用户设置
-    const resetData = {
-      ...DEFAULT_SETTINGS,
-      worldbook_name: currentData.worldbook_name,
-      current_volume: currentData.current_volume,
-      last_processed_message_id: currentData.last_processed_message_id,
-      volumes: currentData.volumes,
-    } as ScriptDataType;
+    // 重置用户设置（运行时元数据存在世界书中，不受影响）
+    const resetData = { ...DEFAULT_SETTINGS } as ScriptDataType;
     saveScriptData(resetData);
     toastr.success('已重置为默认设置');
     closeOverlay();
@@ -467,10 +461,8 @@ async function openSettingsPopup(): Promise<void> {
         console.error('[自动总结] 绑定世界书失败:', e);
       }
     } else {
-      // 解绑
-      const data = getScriptData();
-      data.worldbook_name = '';
-      saveScriptData(data);
+      // 解绑：绑定空字符串以解除
+      await rebindChatWorldbook('current', '');
       toastr.info('已解除世界书绑定');
     }
   });

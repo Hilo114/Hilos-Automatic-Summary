@@ -37,15 +37,36 @@ export const ENTRY_DEFAULTS: PartialDeep<WorldbookEntry> = {
 
 // ========== Zod Schema ==========
 
-/** 脚本数据 schema：合并用户设置 + 运行时元数据 */
+/** 运行时元数据 schema（存储在世界书 [data] 条目中） */
+export const MetaData = z
+  .object({
+    /** 当前卷号 */
+    current_volume: z.coerce.number().prefault(1),
+    /** 上次处理到的楼层 ID */
+    last_processed_message_id: z.coerce.number().prefault(-1),
+    /** 已归档的卷信息 */
+    volumes: z
+      .array(
+        z.object({
+          volume: z.coerce.number(),
+          start_message_id: z.coerce.number(),
+          end_message_id: z.coerce.number(),
+        })
+      )
+      .prefault([]),
+  })
+  .prefault({});
+
+export type MetaDataType = z.output<typeof MetaData>;
+
+/** 脚本数据 schema：用户设置 */
 export const ScriptData = z
   .object({
-    // === 用户设置 ===
     /** 最近保留显示的楼层数 */
     visible_floors: z.coerce
       .number()
       .transform(v => _.clamp(v, 1, 100))
-      .prefault(20),
+      .prefault(10),
     /** 每多少个小总结触发一次大总结检查 */
     check_interval: z.coerce
       .number()
@@ -84,7 +105,7 @@ export const ScriptData = z
     ignore_floors: z.coerce
       .number()
       .transform(v => _.clamp(v, 0, 1000))
-      .prefault(0),
+      .prefault(2),
     /** API 配置 */
     custom_api: z
       .object({
@@ -109,7 +130,7 @@ export const ScriptData = z
     /** 内容捕获结束标签（提取到该标签之前的内容，为空则截取到消息末尾） */
     capture_end_tag: z.string().prefault(''),
     /** 是否启用防合并标记（kemini/noass脚本用到） */
-    no_trans_tag: z.boolean().prefault(true),
+    no_trans_tag: z.boolean().prefault(false),
     /** 防合并标记内容 */
     no_trans_tag_value: z.string().prefault('<|no-trans|>'),
     /** 自定义提示词（空字符串表示使用默认） */
@@ -120,30 +141,12 @@ export const ScriptData = z
         volume_completion_check_system: z.string().prefault(''),
       })
       .prefault({}),
-
-    // === 运行时元数据 ===
-    /** 当前聊天绑定的总结世界书名称（空字符串表示未绑定） */
-    worldbook_name: z.string().prefault(''),
-    /** 当前卷号 */
-    current_volume: z.coerce.number().prefault(1),
-    /** 上次处理到的楼层 ID */
-    last_processed_message_id: z.coerce.number().prefault(-1),
-    /** 已归档的卷信息 */
-    volumes: z
-      .array(
-        z.object({
-          volume: z.coerce.number(),
-          start_message_id: z.coerce.number(),
-          end_message_id: z.coerce.number(),
-        })
-      )
-      .prefault([]),
   })
   .prefault({});
 
 export type ScriptDataType = z.output<typeof ScriptData>;
 
-/** 默认设置值（用于重置功能，不含运行时元数据） */
+/** 默认设置值（用于重置功能） */
 export const DEFAULT_SETTINGS: Partial<ScriptDataType> = ScriptData.parse({});
 
 // ========== 脚本变量读写 ==========

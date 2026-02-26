@@ -6,7 +6,7 @@
  * - 大总结触发检查
  */
 
-import { getScriptData, getSettings, saveScriptData, type ScriptDataType } from '@/config';
+import { getSettings, type ScriptDataType } from '@/config';
 import {
   getMiniSummaryPrompt,
   getVolumeSummaryPrompt,
@@ -19,6 +19,8 @@ import {
   getUnarchivedMiniSummaries,
   getVolumes,
   createVolumeEntry,
+  getMetaData,
+  saveMetaData,
 } from '@/worldbook';
 
 // ========== 消息清洗 ==========
@@ -175,9 +177,9 @@ export async function handleMiniSummary(message_id: number): Promise<void> {
   await upsertMiniSummaryEntry(message_id, summary);
 
   // 更新元数据
-  const data = getScriptData();
-  data.last_processed_message_id = message_id;
-  saveScriptData(data);
+  const meta = await getMetaData();
+  meta.last_processed_message_id = message_id;
+  await saveMetaData(meta);
 }
 
 // ========== 大总结 ==========
@@ -250,7 +252,7 @@ export async function performVolumeSummary(): Promise<void> {
     return;
   }
 
-  const data = getScriptData();
+  const meta = await getMetaData();
   const unarchivedEntries = await getUnarchivedMiniSummaries();
 
   if (unarchivedEntries.length === 0) return;
@@ -291,7 +293,7 @@ export async function performVolumeSummary(): Promise<void> {
   const finalContent = content.replace(/\s*摘要\d+-摘要\d+\s*$/, '').trim();
 
   // 创建卷条目并关闭对应小总结
-  await createVolumeEntry(data.current_volume, start_id, end_id, finalContent);
+  await createVolumeEntry(meta.current_volume, start_id, end_id, finalContent);
 
-  console.log(`[自动总结] 已归档卷${data.current_volume}: 楼层${start_id}~楼层${end_id}`);
+  console.log(`[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}`);
 }

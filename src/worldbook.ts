@@ -7,9 +7,9 @@
  */
 
 import {
-  getScriptData,
   getSettings,
-  saveScriptData,
+  MetaData,
+  type MetaDataType,
   getMiniSummaryOrder,
   getVolumeOrder,
   ENTRY_DEFAULTS,
@@ -19,8 +19,7 @@ import {
 
 /** 返回当前聊天绑定的总结世界书名称，未绑定则返回 null */
 export function getWorldbookName(): string | null {
-  const data = getScriptData();
-  return data.worldbook_name || null;
+  return getChatWorldbookName('current');
 }
 
 /** 检查当前绑定的世界书是否存在 */
@@ -43,13 +42,8 @@ export async function createWorldbookForChat(name?: string): Promise<string> {
     console.log(`[自动总结] 已创建世界书: ${worldbookName}`);
   }
 
-  // 1. 绑定到聊天文件（原生机制）
+  // 绑定到聊天文件（原生机制）
   await rebindChatWorldbook('current', worldbookName);
-
-  // 2. 同时记录到脚本变量（供本脚本快速查询）
-  const data = getScriptData();
-  data.worldbook_name = worldbookName;
-  saveScriptData(data);
 
   console.log(`[自动总结] 已绑定世界书: ${worldbookName}`);
   return worldbookName;
@@ -57,15 +51,78 @@ export async function createWorldbookForChat(name?: string): Promise<string> {
 
 /** 将已有世界书绑定到当前聊天 */
 export async function bindWorldbookForChat(name: string): Promise<void> {
-  // 1. 绑定到聊天文件（原生机制）
+  // 绑定到聊天文件（原生机制）
   await rebindChatWorldbook('current', name);
 
-  // 2. 同时记录到脚本变量（供本脚本快速查询）
-  const data = getScriptData();
-  data.worldbook_name = name;
-  saveScriptData(data);
-
   console.log(`[自动总结] 已绑定世界书: ${name}`);
+}
+
+// ========== [data] 元数据条目操作 ==========
+
+const DATA_ENTRY_NAME = '[data]';
+
+/** 确保世界书中存在 [data] 条目，不存在则创建 */
+export async function ensureDataEntry(): Promise<void> {
+  const worldbookName = getWorldbookName();
+  if (!worldbookName || !worldbookExists()) return;
+
+  const worldbook = await getWorldbook(worldbookName);
+  const existing = worldbook.find(e => e.name === DATA_ENTRY_NAME);
+
+  if (!existing) {
+    const defaultData = MetaData.parse({});
+    await createWorldbookEntries(worldbookName, [
+      {
+        ...ENTRY_DEFAULTS,
+        enabled: false,
+        name: DATA_ENTRY_NAME,
+        content: JSON.stringify(defaultData),
+      },
+    ]);
+    console.log('[自动总结] 已创建 [data] 元数据条目');
+  }
+}
+
+/** 从世界书 [data] 条目读取运行时元数据 */
+export async function getMetaData(): Promise<MetaDataType> {
+  const worldbookName = getWorldbookName();
+  if (!worldbookName || !worldbookExists()) {
+    return MetaData.parse({});
+  }
+
+  const worldbook = await getWorldbook(worldbookName);
+  const entry = worldbook.find(e => e.name === DATA_ENTRY_NAME);
+
+  if (!entry) {
+    return MetaData.parse({});
+  }
+
+  try {
+    const raw = JSON.parse(entry.content);
+    return MetaData.parse(raw);
+  } catch (e) {
+    console.error('[自动总结] 解析 [data] 条目失败，使用默认值:', e);
+    return MetaData.parse({});
+  }
+}
+
+/** 将运行时元数据保存到世界书 [data] 条目 */
+export async function saveMetaData(data: MetaDataType): Promise<void> {
+  const worldbookName = getWorldbookName();
+  if (!worldbookName || !worldbookExists()) {
+    console.warn('[自动总结] 世界书不存在，跳过保存元数据');
+    return;
+  }
+
+  const content = JSON.stringify(data);
+
+  await updateWorldbookWith(worldbookName, wb => {
+    const entry = wb.find(e => e.name === DATA_ENTRY_NAME);
+    if (entry) {
+      entry.content = content;
+    }
+    return wb;
+  });
 }
 
 // ========== 小总结条目操作 ==========
@@ -156,7 +213,7 @@ export async function getUnarchivedMiniSummaries(): Promise<WorldbookEntry[]> {
   if (!name || !worldbookExists()) return [];
 
   const worldbook = await getWorldbook(name);
-  const metadata = getScriptData();
+  const metadata = await getMetaData();
 
   // 收集已归档的楼层 ID
   const archivedIds = new Set<number>();
@@ -184,7 +241,7 @@ export async function syncMiniSummaryEnabled(): Promise<void> {
   const settings = getSettings();
   const lastId = getLastMessageId();
   const visibleThreshold = lastId - settings.visible_floors + 1;
-  const metadata = getScriptData();
+  const metadata = await getMetaData();
 
   // 收集已归档的楼层 ID 范围
   const archivedIds = new Set<number>();
@@ -261,11 +318,11 @@ export async function createVolumeEntry(
     return worldbook;
   });
 
-  // 3. 更新脚本变量元数据
-  const data = getScriptData();
-  data.current_volume = volume + 1;
-  data.volumes.push({ volume, start_message_id: start_id, end_message_id: end_id });
-  saveScriptData(data);
+  // 3. 更新元数据
+  const meta = await getMetaData();
+  meta.current_volume = volume + 1;
+  meta.volumes.push({ volume, start_message_id: start_id, end_message_id: end_id });
+  await saveMetaData(meta);
 }
 
 /** 获取所有已有卷条目 */

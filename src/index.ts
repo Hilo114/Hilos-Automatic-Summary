@@ -8,7 +8,7 @@
 import { getScriptData } from '@/config';
 import { taskQueue } from '@/queue';
 import { handleMiniSummary, performVolumeSummary } from '@/summary';
-import { worldbookExists, syncMiniSummaryEnabled } from '@/worldbook';
+import { worldbookExists, syncMiniSummaryEnabled, ensureDataEntry } from '@/worldbook';
 import { registerListeners } from '@/trigger';
 import { addMenuItem } from '@/ui';
 
@@ -43,8 +43,9 @@ $(() => {
       }
       console.log(`[自动总结] 当前角色卡: ${charName}`);
 
-      // 3. 同步小总结 enabled 状态（仅在世界书存在时）
+      // 3. 确保 [data] 条目存在并同步小总结 enabled 状态（仅在世界书存在时）
       if (worldbookExists()) {
+        await ensureDataEntry();
         await syncMiniSummaryEnabled();
       } else {
         console.log('[自动总结] 当前聊天未绑定世界书或世界书不存在，跳过同步');
