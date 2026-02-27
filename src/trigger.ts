@@ -13,6 +13,9 @@ import { updateFloorVisibility } from '@/chat-manager';
 /** 小总结计数器（用于大总结检查间隔） */
 let miniSummaryCount = 0;
 
+/** 后置总结：上一条待总结的消息 ID */
+let pendingMessageId: number | null = null;
+
 /** 检查是否应该触发大总结检查 */
 function shouldCheckVolumeSummary(): boolean {
   const settings = getSettings();
@@ -41,29 +44,44 @@ async function onMessageReceived(message_id: number): Promise<void> {
   if (!worldbookExists()) return;
 
   try {
-    // === 同步阶段 ===
+    // === 后置总结逻辑 ===
+    if (settings.deferred_summary) {
+      // 后置模式：先处理上一条待总结的消息
+      if (pendingMessageId !== null) {
+        await createPlaceholderMiniSummary(pendingMessageId);
+        miniSummaryCount++;
+        if (shouldCheckVolumeSummary()) {
+          taskQueue.enqueue({ type: 'volume_summary' });
+        }
+        taskQueue.enqueue({ type: 'mini_summary', message_id: pendingMessageId });
+      }
+      // 记住当前消息为待处理
+      pendingMessageId = message_id;
+    } else {
+      // === 即时模式（原有逻辑） ===
 
-    // 1. 新建当前楼层的小总结世界书条目（内容为空占位）
-    await createPlaceholderMiniSummary(message_id);
+      // 1. 新建当前楼层的小总结世界书条目（内容为空占位）
+      await createPlaceholderMiniSummary(message_id);
 
-    // 2. 同步小总结 enabled 状态
-    await syncMiniSummaryEnabled();
+      // 2. 递增计数器
+      miniSummaryCount++;
 
-    // 3. 调整楼层隐藏与显示
-    await updateFloorVisibility();
+      // 3. 大总结检查（如果满足间隔条件，将大总结任务加入队列）
+      if (shouldCheckVolumeSummary()) {
+        taskQueue.enqueue({ type: 'volume_summary' });
+      }
 
-    // === 异步队列阶段 ===
-
-    // 4. 递增计数器
-    miniSummaryCount++;
-
-    // 5. 大总结检查（如果满足间隔条件，将大总结任务加入队列）
-    if (shouldCheckVolumeSummary()) {
-      taskQueue.enqueue({ type: 'volume_summary' });
+      // 4. 将小总结生成任务加入异步队列
+      taskQueue.enqueue({ type: 'mini_summary', message_id });
     }
 
-    // 6. 将小总结生成任务加入异步队列
-    taskQueue.enqueue({ type: 'mini_summary', message_id });
+    // === 同步阶段（两种模式共用） ===
+
+    // 同步小总结 enabled 状态
+    await syncMiniSummaryEnabled();
+
+    // 调整楼层隐藏与显示
+    await updateFloorVisibility();
   } catch (e) {
     console.error('[自动总结] 消息处理失败:', e);
   }

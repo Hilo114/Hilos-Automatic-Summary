@@ -134,6 +134,8 @@ export const ScriptData = z
     capture_start_tag: z.string().prefault(''),
     /** 内容捕获结束标签（提取到该标签之前的内容，为空则截取到消息末尾） */
     capture_end_tag: z.string().prefault(''),
+    /** 是否启用后置总结（延迟到下一条消息到达时才对上一条进行总结） */
+    deferred_summary: z.boolean().prefault(false),
     /** 是否启用防合并标记（kemini/noass脚本用到） */
     no_trans_tag: z.boolean().prefault(false),
     /** 防合并标记内容 */
