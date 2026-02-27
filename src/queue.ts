@@ -4,6 +4,8 @@
  * - 同一楼层的小总结任务去重
  */
 
+import { getSettings } from '@/config';
+
 export type TaskType = 'mini_summary' | 'volume_summary';
 
 export type SummaryTask = {
@@ -54,6 +56,12 @@ export class TaskQueue {
         await this.handlers.mini_summary(task.message_id);
       } else if (task.type === 'volume_summary') {
         await this.handlers.volume_summary();
+      }
+      
+      // 添加任务执行后的冷却间隔
+      const settings = getSettings();
+      if (settings.task_cooldown > 0) {
+        await new Promise(resolve => setTimeout(resolve, settings.task_cooldown * 1000));
       }
     } catch (e) {
       console.error('[自动总结] 总结任务执行失败:', e);

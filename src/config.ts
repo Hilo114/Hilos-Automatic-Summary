@@ -91,6 +91,11 @@ export const ScriptData = z
       .number()
       .transform(v => _.clamp(v, 0, 99999))
       .prefault(9999),
+    /** 队列任务冷却间隔（秒） */
+    task_cooldown: z.coerce
+      .number()
+      .transform(v => Math.max(0, v))
+      .prefault(5),
     /** 小总结起始排序 order 基数 */
     mini_summary_start_order: z.coerce
       .number()
