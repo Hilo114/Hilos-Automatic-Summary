@@ -57,7 +57,7 @@ export class TaskQueue {
       } else if (task.type === 'volume_summary') {
         await this.handlers.volume_summary();
       }
-      
+
       // 添加任务执行后的冷却间隔
       const settings = getSettings();
       if (settings.task_cooldown > 0) {
