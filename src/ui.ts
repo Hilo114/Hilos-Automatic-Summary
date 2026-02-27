@@ -535,7 +535,7 @@ async function openSettingsPopup(): Promise<void> {
       for (const msg of msgs) {
         // 仅处理 AI 消息（排除 user 和 system 消息）
         if (msg.role === 'user' || msg.role === 'system') continue;
-        
+
         if (!existingFloors.has(msg.message_id)) {
           taskQueue.enqueue({ type: 'mini_summary', message_id: msg.message_id });
           count++;
