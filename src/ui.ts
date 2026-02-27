@@ -133,7 +133,7 @@ function buildSettingsHtml(data: ScriptDataType): string {
         <div style="margin-bottom: 8px;">
           <label>
             <input type="checkbox" id="hs-deferred-summary" ${data.deferred_summary ? 'checked' : ''} />
-            后置总结
+            延迟总结
           </label>
           <small style="color: #888;">（启用后将在下一次回复到达后才对上一条消息进行总结）</small>
         </div>
