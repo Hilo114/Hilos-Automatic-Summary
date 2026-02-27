@@ -531,9 +531,13 @@ async function openSettingsPopup(): Promise<void> {
       }
 
       let count = 0;
-      for (let i = startId; i <= lastId; i++) {
-        if (!existingFloors.has(i)) {
-          taskQueue.enqueue({ type: 'mini_summary', message_id: i });
+      const msgs = getChatMessages(`${startId}-${lastId}`);
+      for (const msg of msgs) {
+        // 仅处理 AI 消息（排除 user 和 system 消息）
+        if (msg.role === 'user' || msg.role === 'system') continue;
+        
+        if (!existingFloors.has(msg.message_id)) {
+          taskQueue.enqueue({ type: 'mini_summary', message_id: msg.message_id });
           count++;
         }
       }

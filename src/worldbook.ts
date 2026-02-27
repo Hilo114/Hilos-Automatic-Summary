@@ -207,7 +207,7 @@ export async function createPlaceholderMiniSummary(message_id: number): Promise<
   }
 }
 
-/** 获取所有未归档（非卷覆盖范围内）的小总结条目 */
+/** 获取所有未归档的小总结条目 */
 export async function getUnarchivedMiniSummaries(): Promise<WorldbookEntry[]> {
   const name = getWorldbookName();
   if (!name || !worldbookExists()) return [];
