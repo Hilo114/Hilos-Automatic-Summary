@@ -1,6 +1,6 @@
 {
   "name": "hilos-automatic-summary",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "一个自动总结脚本",
   "type": "module",
   "scripts": {
