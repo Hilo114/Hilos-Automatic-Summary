@@ -111,6 +111,11 @@ export const ScriptData = z
       .number()
       .transform(v => _.clamp(v, 0, 1000))
       .prefault(2),
+    /** 最大回复 token 数（0 表示跟随预设） */
+    max_tokens: z.coerce
+      .number()
+      .transform(v => Math.max(0, Math.round(v)))
+      .prefault(0),
     /** API 配置 */
     custom_api: z
       .object({

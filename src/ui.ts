@@ -168,6 +168,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <small style="color: #888;">（秒，防并发冲突与 API 速率限制）</small>
         </div>
         <div style="margin-bottom: 8px;">
+          <label>最大回复 Token：</label>
+          <input type="number" id="hs-max-tokens" value="${data.max_tokens}" min="0" max="128000" style="width: 100px;" />
+          <small style="color: #888;">（0 = 跟随预设，建议 300~2000）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
           <label>内容捕获标签：</label>
           <div style="display: flex; gap: 5px; align-items: center; margin-top: 4px;">
             <span>&lt;</span>
@@ -322,6 +327,7 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     volume_start_order: parseInt($('#hs-volume-start-order').val() as string) || 100,
     ignore_floors: parseInt($('#hs-ignore-floors').val() as string) || 0,
     task_cooldown: parseInt($('#hs-task-cooldown').val() as string) || 5,
+    max_tokens: parseInt($('#hs-max-tokens').val() as string) || 0,
     capture_start_tag: (($('#hs-capture-start-tag').val() as string) || '').trim(),
     capture_end_tag: (($('#hs-capture-end-tag').val() as string) || '').trim(),
     no_trans_tag: $('#hs-no-trans-tag').is(':checked'),

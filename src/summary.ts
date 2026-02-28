@@ -77,12 +77,17 @@ export function cleanMessage(message: string, settings: ScriptDataType): string 
 /** 构建 generateRaw 的 API 配置 */
 function buildCustomApi(settings: ScriptDataType): Record<string, any> | undefined {
   if (!settings.custom_api.apiurl) return undefined;
-  return {
+  const api: Record<string, any> = {
     apiurl: settings.custom_api.apiurl,
     key: settings.custom_api.key,
     model: settings.custom_api.model,
     source: settings.custom_api.source,
   };
+  // 将 max_tokens 传递给自定义 API
+  if (settings.max_tokens > 0) {
+    api.max_tokens = settings.max_tokens;
+  }
+  return api;
 }
 
 /** 调用 AI 生成文本 */
@@ -98,14 +103,21 @@ async function callAI(
     return useNoTrans ? `${NO_TRANS}${text}` : text;
   };
 
-  const result = await generateRaw({
+  const generateConfig: Record<string, any> = {
     should_silence: true,
-    custom_api: buildCustomApi(settings) as any,
     ordered_prompts: [
       { role: 'system', content: wrapContent(systemPrompt) },
       { role: 'user', content: wrapContent(userPrompt) },
     ],
-  });
+  };
+  const customApi = buildCustomApi(settings);
+  if (customApi) {
+    generateConfig.custom_api = customApi;
+  } else if (settings.max_tokens > 0) {
+    // 即使没有自定义 API，也可以通过 custom_api 传递 max_tokens
+    generateConfig.custom_api = { max_tokens: settings.max_tokens };
+  }
+  const result = await generateRaw(generateConfig as any);
   return result;
 }
 
