@@ -55,8 +55,20 @@ export function addMenuItem(): void {
 
 // ========== 设置弹窗 ==========
 
+/** 安全获取世界书名列表（未打开聊天时返回空数组） */
+function safeGetWorldbookNames(): string[] {
+  try {
+    return getWorldbookNames();
+  } catch {
+    return [];
+  }
+}
+
 /** 构建设置弹窗 HTML */
 function buildSettingsHtml(data: ScriptDataType): string {
+  const currentWbName = getWorldbookName();
+  const wbNames = safeGetWorldbookNames();
+
   return `
     <div id="hilo-summary-settings" style="padding: 10px;">
       <style>
@@ -88,11 +100,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
         <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
           <label>当前世界书：</label>
           <select id="hs-worldbook-select" style="flex: 1;">
-            <option value=""${!getWorldbookName() ? ' selected' : ''}>（未绑定）</option>
-            ${getWorldbookNames()
+            <option value=""${!currentWbName ? ' selected' : ''}>（未绑定）</option>
+            ${wbNames
               .map(
                 name =>
-                  `<option value="${escapeHtml(name)}" ${getWorldbookName() === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
+                  `<option value="${escapeHtml(name)}" ${currentWbName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
               )
               .join('')}
           </select>
@@ -172,17 +184,16 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <input type="number" id="hs-max-tokens" value="${data.max_tokens}" min="0" max="128000" style="width: 100px;" />
           <small style="color: #888;">（0 = 跟随预设，建议 300~2000）</small>
         </div>
-        <div style="margin-bottom: 8px;">
-          <label>内容捕获标签：</label>
-          <div style="display: flex; gap: 5px; align-items: center; margin-top: 4px;">
-            <span>&lt;</span>
-            <input type="text" id="hs-capture-start-tag" value="${escapeHtml(data.capture_start_tag)}" style="width: 100px;" placeholder="起始标签" />
-            <span>&gt; … &lt;</span>
-            <input type="text" id="hs-capture-end-tag" value="${escapeHtml(data.capture_end_tag)}" style="width: 100px;" placeholder="结束标签" />
-            <span>&gt;</span>
+        <!-- 内容捕获标签 -->
+        <details style="margin-bottom: 8px;">
+          <summary style="cursor: pointer;">内容捕获标签 <small style="color: #888;">（仅总结标签之间的内容，列表为空则总结全部）</small></summary>
+          <div style="padding: 8px 0;">
+            <div id="hs-capture-tags-list">
+              ${data.capture_tags.map((t, i) => buildCaptureTagRowHtml(t, i)).join('')}
+            </div>
+            <button id="hs-add-capture-tag" class="menu_button" style="white-space: nowrap; flex: 1; padding: 5px 0;">+ 添加捕获标签</button>
           </div>
-          <small style="color: #888;">（仅总结两个标签之间的内容，均留空则总结全部）</small>
-        </div>
+        </details>
         <div style="margin-bottom: 8px;">
           <label>
             <input type="checkbox" id="hs-no-trans-tag" ${data.no_trans_tag ? 'checked' : ''} />
@@ -216,7 +227,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
         </div>
         <div style="margin-bottom: 8px;">
           <label>模型：</label>
-          <input type="text" id="hs-custom-api-model" value="${escapeHtml(data.custom_api.model)}" style="width: 100%;" placeholder="输入模型名称，如 gpt-4o" />
+          <div style="display: flex; gap: 5px; align-items: center;">
+            <input type="text" id="hs-custom-api-model" value="${escapeHtml(data.custom_api.model)}" style="flex: 1;" placeholder="输入模型名称，如 gpt-4o" list="hs-model-datalist" />
+            <datalist id="hs-model-datalist"></datalist>
+            <button id="hs-fetch-models" class="menu_button" style="white-space: nowrap; padding: 4px 10px;">获取模型</button>
+          </div>
         </div>
         <div style="margin-bottom: 8px;">
           <label>API 源：</label>
@@ -267,6 +282,39 @@ function buildSettingsHtml(data: ScriptDataType): string {
       </details>
     </div>
   `;
+}
+
+/** 构建单行捕获标签 HTML */
+function buildCaptureTagRowHtml(
+  tag: { start_tag: string; end_tag: string },
+  index: number
+): string {
+  return `
+    <div class="hs-capture-tag-row" data-index="${index}" style="display: flex; gap: 5px; margin-bottom: 5px; align-items: center;">
+      <span>&lt;</span>
+      <input type="text" class="hs-capture-start-tag" value="${escapeHtml(tag.start_tag)}" placeholder="起始标签" style="flex: 1;" />
+      <span>&gt; … &lt;</span>
+      <input type="text" class="hs-capture-end-tag" value="${escapeHtml(tag.end_tag)}" placeholder="结束标签" style="flex: 1;" />
+      <span>&gt;</span>
+      <button class="hs-remove-capture-tag menu_button" style="flex: 0 0 auto; padding: 2px 8px;">✕</button>
+    </div>
+  `;
+}
+
+/** 从弹窗收集捕获标签数据 */
+function collectCaptureTagsFromPopup(): { start_tag: string; end_tag: string }[] {
+  const tagRows = $('.hs-capture-tag-row');
+  const tagList: { start_tag: string; end_tag: string }[] = [];
+  tagRows.each(function () {
+    const $row = $(this);
+    const startTag = (($row.find('.hs-capture-start-tag').val() as string) || '').trim();
+    const endTag = (($row.find('.hs-capture-end-tag').val() as string) || '').trim();
+    // 保留至少有一个标签不为空的行
+    if (startTag || endTag) {
+      tagList.push({ start_tag: startTag, end_tag: endTag });
+    }
+  });
+  return tagList;
 }
 
 /** 构建单行正则 HTML */
@@ -328,8 +376,7 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     ignore_floors: parseInt($('#hs-ignore-floors').val() as string) || 0,
     task_cooldown: parseInt($('#hs-task-cooldown').val() as string) || 5,
     max_tokens: parseInt($('#hs-max-tokens').val() as string) || 0,
-    capture_start_tag: (($('#hs-capture-start-tag').val() as string) || '').trim(),
-    capture_end_tag: (($('#hs-capture-end-tag').val() as string) || '').trim(),
+    capture_tags: collectCaptureTagsFromPopup(),
     no_trans_tag: $('#hs-no-trans-tag').is(':checked'),
     no_trans_tag_value: (($('#hs-no-trans-tag-value').val() as string) || '').trim(),
     custom_api: {
@@ -574,6 +621,72 @@ async function openSettingsPopup(): Promise<void> {
     }
   });
 
+  // 获取模型列表
+  $overlay.on('click', '#hs-fetch-models', async () => {
+    const apiUrl = (($('#hs-custom-api-url').val() as string) || '').trim();
+    const apiKey = (($('#hs-custom-api-key').val() as string) || '').trim();
+
+    if (!apiUrl) {
+      toastr.warning('请先填写 API URL');
+      return;
+    }
+
+    const $btn = $('#hs-fetch-models');
+    $btn.prop('disabled', true).text('获取中...');
+
+    try {
+      // 尝试 /v1/models 和 /models 两种路径
+      const baseUrl = apiUrl.replace(/\/+$/, '');
+      const urls = baseUrl.endsWith('/v1')
+        ? [`${baseUrl}/models`]
+        : [`${baseUrl}/v1/models`, `${baseUrl}/models`];
+
+      let models: string[] = [];
+      for (const url of urls) {
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+          const resp = await fetch(url, { method: 'GET', headers });
+          if (!resp.ok) continue;
+
+          const json = await resp.json();
+          if (json.data && Array.isArray(json.data)) {
+            models = json.data
+              .map((m: any) => m.id || m.name || '')
+              .filter((id: string) => id)
+              .sort();
+            break;
+          }
+        } catch {
+          // 尝试下一个 URL
+        }
+      }
+
+      if (models.length === 0) {
+        toastr.warning('未获取到模型列表，请检查 API URL 和 Key');
+        return;
+      }
+
+      // 填充 datalist
+      const $datalist = $('#hs-model-datalist');
+      $datalist.empty();
+      for (const model of models) {
+        $datalist.append(`<option value="${escapeHtml(model)}">`);
+      }
+
+      toastr.success(`已获取 ${models.length} 个模型`);
+
+      // 聚焦输入框以显示建议列表
+      $('#hs-custom-api-model').trigger('focus');
+    } catch (e) {
+      toastr.error('获取模型列表失败');
+      console.error('[自动总结] 获取模型列表失败:', e);
+    } finally {
+      $btn.prop('disabled', false).text('获取模型');
+    }
+  });
+
   // 添加正则
   let regexIndex = data.message_cleanup_regex.length;
   $overlay.on('click', '#hs-add-regex', () => {
@@ -584,6 +697,18 @@ async function openSettingsPopup(): Promise<void> {
   // 删除正则
   $overlay.on('click', '.hs-remove-regex', function () {
     $(this).closest('.hs-regex-row').remove();
+  });
+
+  // 添加捕获标签
+  let captureTagIndex = data.capture_tags.length;
+  $overlay.on('click', '#hs-add-capture-tag', () => {
+    const newRow = buildCaptureTagRowHtml({ start_tag: '', end_tag: '' }, captureTagIndex++);
+    $('#hs-capture-tags-list').append(newRow);
+  });
+
+  // 删除捕获标签
+  $overlay.on('click', '.hs-remove-capture-tag', function () {
+    $(this).closest('.hs-capture-tag-row').remove();
   });
 
   // 点击遮罩关闭

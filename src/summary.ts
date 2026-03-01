@@ -26,35 +26,47 @@ import {
 // ========== 消息清洗 ==========
 
 /** 从消息中提取由起始标签和结束标签之间的内容，若未配置标签或未匹配到则返回原文 */
-export function extractTaggedContent(message: string, startTag: string, endTag: string): string {
-  if (!startTag && !endTag) return message;
+export function extractTaggedContent(
+  message: string,
+  captureTags: { start_tag: string; end_tag: string }[]
+): string {
+  // 过滤掉起始和结束标签都为空的组
+  const validTags = captureTags.filter(t => t.start_tag || t.end_tag);
+  if (validTags.length === 0) return message;
 
-  // 构建匹配正则
-  const startPattern = startTag ? `<${_.escapeRegExp(startTag)}>` : '^';
-  const endPattern = endTag ? `<${_.escapeRegExp(endTag)}>` : '$';
-  const regex = new RegExp(`${startPattern}([\\s\\S]*?)${endPattern}`, 'g');
+  const allMatches: string[] = [];
 
-  const matches: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(message)) !== null) {
-    const content = match[1].trim();
-    if (content) {
-      matches.push(content);
+  for (const { start_tag: startTag, end_tag: endTag } of validTags) {
+    // 构建匹配正则
+    const startPattern = startTag ? `<${_.escapeRegExp(startTag)}>` : '^';
+    const endPattern = endTag ? `<${_.escapeRegExp(endTag)}>` : '$';
+    const regex = new RegExp(`${startPattern}([\\s\\S]*?)${endPattern}`, 'g');
+
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(message)) !== null) {
+      const content = match[1].trim();
+      if (content) {
+        allMatches.push(content);
+      }
+    }
+
+    if (allMatches.length === 0) {
+      const tagDesc =
+        startTag && endTag
+          ? `<${startTag}> 和 <${endTag}> 之间`
+          : startTag
+            ? `<${startTag}> 之后`
+            : `<${endTag}> 之前`;
+      console.warn(`[自动总结] 未在消息中找到 ${tagDesc} 的内容`);
     }
   }
 
-  if (matches.length === 0) {
-    const tagDesc =
-      startTag && endTag
-        ? `<${startTag}> 和 <${endTag}> 之间`
-        : startTag
-          ? `<${startTag}> 之后`
-          : `<${endTag}> 之前`;
-    console.warn(`[自动总结] 未在消息中找到 ${tagDesc} 的内容，将使用原始消息`);
+  if (allMatches.length === 0) {
+    console.warn(`[自动总结] 所有捕获标签均未匹配到内容，将使用原始消息`);
     return message;
   }
 
-  return matches.join('\n\n');
+  return allMatches.join('\n\n');
 }
 
 /** 使用用户自定义正则清洗消息内容 */
@@ -157,16 +169,20 @@ export async function generateMiniSummaryContent(message_id: number): Promise<st
     return '（空消息）';
   }
 
-  // 应用酒馆正则过滤（根据消息角色确定 source）
-  const source = messages[0].role === 'user' ? 'user_input' : 'ai_output';
-  const regexedMessage = formatAsTavernRegexedString(rawMessage, source, 'prompt');
+  // 判断是否配置了有效的捕获标签
+  const hasCaptureTags = settings.capture_tags.some(t => t.start_tag || t.end_tag);
 
-  // 提取捕获标签内容
-  const extracted = extractTaggedContent(
-    regexedMessage,
-    settings.capture_start_tag,
-    settings.capture_end_tag
-  );
+  let processedMessage: string;
+  if (hasCaptureTags) {
+    // 有捕获标签时，直接对原始消息应用标签捕获，不应用酒馆正则清洗
+    processedMessage = extractTaggedContent(rawMessage, settings.capture_tags);
+  } else {
+    // 无捕获标签时，应用酒馆正则过滤后使用全文
+    const source = messages[0].role === 'user' ? 'user_input' : 'ai_output';
+    processedMessage = formatAsTavernRegexedString(rawMessage, source, 'prompt');
+  }
+
+  const extracted = processedMessage;
 
   const cleaned = cleanMessage(extracted, settings);
   const prompt = getMiniSummaryPrompt(cleaned, context);

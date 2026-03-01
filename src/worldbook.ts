@@ -17,9 +17,13 @@ import {
 
 // ========== 世界书名称与存在性 ==========
 
-/** 返回当前聊天绑定的总结世界书名称，未绑定则返回 null */
+/** 返回当前聊天绑定的总结世界书名称，未绑定或未打开聊天则返回 null */
 export function getWorldbookName(): string | null {
-  return getChatWorldbookName('current');
+  try {
+    return getChatWorldbookName('current');
+  } catch {
+    return null;
+  }
 }
 
 /** 检查当前绑定的世界书是否存在 */

@@ -135,10 +135,15 @@ export const ScriptData = z
         })
       )
       .prefault([]),
-    /** 内容捕获起始标签（提取该标签之后的内容，为空则总结全部内容） */
-    capture_start_tag: z.string().prefault(''),
-    /** 内容捕获结束标签（提取到该标签之前的内容，为空则截取到消息末尾） */
-    capture_end_tag: z.string().prefault(''),
+    /** 内容捕获标签列表（提取每组起始/结束标签之间的内容，均为空则总结全部） */
+    capture_tags: z
+      .array(
+        z.object({
+          start_tag: z.string().prefault(''),
+          end_tag: z.string().prefault(''),
+        })
+      )
+      .prefault([]),
     /** 是否启用后置总结（延迟到下一条消息到达时才对上一条进行总结） */
     deferred_summary: z.boolean().prefault(false),
     /** 是否启用防合并标记（kemini/noass脚本用到） */
