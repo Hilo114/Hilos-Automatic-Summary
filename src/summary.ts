@@ -42,15 +42,17 @@ export function extractTaggedContent(
     const endPattern = endTag ? `<${_.escapeRegExp(endTag)}>` : '$';
     const regex = new RegExp(`${startPattern}([\\s\\S]*?)${endPattern}`, 'g');
 
+    let groupMatched = false;
     let match: RegExpExecArray | null;
     while ((match = regex.exec(message)) !== null) {
       const content = match[1].trim();
       if (content) {
         allMatches.push(content);
+        groupMatched = true;
       }
     }
 
-    if (allMatches.length === 0) {
+    if (!groupMatched) {
       const tagDesc =
         startTag && endTag
           ? `<${startTag}> 和 <${endTag}> 之间`
