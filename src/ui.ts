@@ -97,9 +97,9 @@ function buildSettingsHtml(data: ScriptDataType): string {
       <!-- 世界书管理 -->
       <div style="margin-bottom: 15px;">
         <h4>世界书管理</h4>
-        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
-          <label>当前世界书：</label>
-          <select id="hs-worldbook-select" style="flex: 1;">
+        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <label style="white-space: nowrap; flex-shrink: 0;">当前世界书：</label>
+          <select id="hs-worldbook-select" style="flex: 1; min-width: 0; max-width: 200px;">
             <option value=""${!currentWbName ? ' selected' : ''}>（未绑定）</option>
             ${wbNames
               .map(
@@ -141,6 +141,21 @@ function buildSettingsHtml(data: ScriptDataType): string {
             <input type="checkbox" id="hs-auto-volume-summary" ${data.auto_volume_summary ? 'checked' : ''} />
             自动大总结
           </label>
+        </div>
+        <div style="margin-bottom: 8px; margin-left: 20px; padding: 8px; border-left: 2px solid var(--SmartThemeBorderColor, #444);">
+          <label style="margin-right: 12px;">
+            <input type="radio" name="hs-volume-trigger-mode" value="ai" ${data.volume_trigger_mode === 'ai' ? 'checked' : ''} />
+            AI判断触发
+          </label>
+          <label>
+            <input type="radio" name="hs-volume-trigger-mode" value="count" ${data.volume_trigger_mode === 'count' ? 'checked' : ''} />
+            消息数触发
+          </label>
+          <div id="hs-trigger-count-row" style="margin-top: 6px; display: ${data.volume_trigger_mode === 'count' ? 'block' : 'none'};">
+            <label>触发数量：</label>
+            <input type="number" id="hs-volume-trigger-count" value="${data.volume_trigger_count}" min="1" max="500" style="width: 80px;" />
+            <small style="color: #888;">（每多少个小总结触发一次大总结）</small>
+          </div>
         </div>
         <div style="margin-bottom: 8px;">
           <label>
@@ -368,6 +383,8 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     volume_token_threshold: parseInt($('#hs-volume-token-threshold').val() as string) || 8000,
     auto_mini_summary: $('#hs-auto-mini-summary').is(':checked'),
     auto_volume_summary: $('#hs-auto-volume-summary').is(':checked'),
+    volume_trigger_mode: (($('input[name="hs-volume-trigger-mode"]:checked').val() as string) || 'ai') as 'ai' | 'count',
+    volume_trigger_count: parseInt($('#hs-volume-trigger-count').val() as string) || 10,
     deferred_summary: $('#hs-deferred-summary').is(':checked'),
     mini_summary_depth: parseInt($('#hs-mini-summary-depth').val() as string) || 9999,
     volume_summary_depth: parseInt($('#hs-volume-summary-depth').val() as string) || 9999,
@@ -685,6 +702,12 @@ async function openSettingsPopup(): Promise<void> {
     } finally {
       $btn.prop('disabled', false).text('获取模型');
     }
+  });
+
+  // 触发模式切换
+  $overlay.on('change', 'input[name="hs-volume-trigger-mode"]', function () {
+    const mode = $(this).val() as string;
+    $('#hs-trigger-count-row').toggle(mode === 'count');
   });
 
   // 添加正则

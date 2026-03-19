@@ -221,6 +221,13 @@ export async function shouldTriggerVolumeSummary(): Promise<boolean> {
 
   if (unarchivedEntries.length === 0) return false;
 
+  // ===== 消息数模式：仅按小总结数量判断 =====
+  if (settings.volume_trigger_mode === 'count') {
+    return unarchivedEntries.length >= settings.volume_trigger_count;
+  }
+
+  // ===== AI 判断模式（默认）=====
+
   // 检查 token 阈值（简单用字符数估算 token 数，中文约 1 字 ≈ 1-2 token）
   const totalContent = unarchivedEntries.map(e => e.content).join('');
   const estimatedTokens = totalContent.length; // 粗略估算

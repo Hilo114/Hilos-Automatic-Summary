@@ -81,6 +81,13 @@ export const ScriptData = z
     auto_mini_summary: z.boolean().prefault(true),
     /** 是否启用自动大总结 */
     auto_volume_summary: z.boolean().prefault(true),
+    /** 大总结触发模式：ai = AI判断 + token阈值，count = 小总结数量达标即触发 */
+    volume_trigger_mode: z.enum(['ai', 'count']).prefault('ai'),
+    /** 消息数模式下，每多少个小总结触发一次大总结 */
+    volume_trigger_count: z.coerce
+      .number()
+      .transform(v => _.clamp(v, 1, 500))
+      .prefault(10),
     /** 小总结注入深度（at_depth） */
     mini_summary_depth: z.coerce
       .number()
