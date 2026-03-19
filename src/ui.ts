@@ -91,6 +91,30 @@ function buildSettingsHtml(data: ScriptDataType): string {
           border-color: var(--SmartThemeFocusColor, #888);
           outline: none;
         }
+        /* 开关行 */
+        .hs-toggle-row {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 8px; padding: 6px 8px;
+          border-radius: 6px;
+          background: var(--SmartThemeSurface, rgba(255,255,255,0.04));
+        }
+        .hs-toggle-row .hs-toggle-label { font-size: 14px; }
+        .hs-toggle-row .hs-toggle-hint  { font-size: 11px; color: #888; margin-left: 4px; }
+        /* 开关样式 */
+        .hs-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; margin-left: 8px; }
+        .hs-switch input { opacity: 0; width: 0; height: 0; }
+        .hs-switch .hs-slider {
+          position: absolute; cursor: pointer; inset: 0;
+          background: var(--SmartThemeBorderColor, #555);
+          border-radius: 22px; transition: background .2s;
+        }
+        .hs-switch .hs-slider::before {
+          content: ""; position: absolute; width: 16px; height: 16px;
+          left: 3px; bottom: 3px; background: #fff;
+          border-radius: 50%; transition: transform .2s;
+        }
+        .hs-switch input:checked + .hs-slider { background: var(--SmartThemeQuoteColor, #4caf50); }
+        .hs-switch input:checked + .hs-slider::before { transform: translateX(18px); }
       </style>
       <h3 style="margin-top: 0;">📖 自动总结设置</h3>
 
@@ -130,17 +154,13 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <input type="number" id="hs-volume-token-threshold" value="${data.volume_token_threshold}" min="1000" max="50000" style="width: 100px;" />
           <small style="color: #888;">（大总结触发阈值）</small>
         </div>
-        <div style="margin-bottom: 8px;">
-          <label>
-            <input type="checkbox" id="hs-auto-mini-summary" ${data.auto_mini_summary ? 'checked' : ''} />
-            自动小总结
-          </label>
+        <div class="hs-toggle-row">
+          <span class="hs-toggle-label">自动小总结</span>
+          <label class="hs-switch"><input type="checkbox" id="hs-auto-mini-summary" ${data.auto_mini_summary ? 'checked' : ''} /><span class="hs-slider"></span></label>
         </div>
-        <div style="margin-bottom: 8px;">
-          <label>
-            <input type="checkbox" id="hs-auto-volume-summary" ${data.auto_volume_summary ? 'checked' : ''} />
-            自动大总结
-          </label>
+        <div class="hs-toggle-row">
+          <span class="hs-toggle-label">自动大总结</span>
+          <label class="hs-switch"><input type="checkbox" id="hs-auto-volume-summary" ${data.auto_volume_summary ? 'checked' : ''} /><span class="hs-slider"></span></label>
         </div>
         <div style="margin-bottom: 8px; margin-left: 20px; padding: 8px; border-left: 2px solid var(--SmartThemeBorderColor, #444);">
           <label style="margin-right: 12px;">
@@ -157,12 +177,12 @@ function buildSettingsHtml(data: ScriptDataType): string {
             <small style="color: #888;">（每多少个小总结触发一次大总结）</small>
           </div>
         </div>
-        <div style="margin-bottom: 8px;">
-          <label>
-            <input type="checkbox" id="hs-deferred-summary" ${data.deferred_summary ? 'checked' : ''} />
-            延迟总结
-          </label>
-          <small style="color: #888;">（启用后将在下一次回复到达后才对上一条消息进行总结）</small>
+        <div class="hs-toggle-row">
+          <span class="hs-toggle-label">延迟总结</span>
+          <label class="hs-switch"><input type="checkbox" id="hs-deferred-summary" ${data.deferred_summary ? 'checked' : ''} /><span class="hs-slider"></span></label>
+        </div>
+        <div style="margin-bottom: 8px; margin-top: -4px; padding-left: 8px;">
+          <small style="color: #888;">启用后将在下一次回复到达后才对上一条消息进行总结</small>
         </div>
         <div style="margin-bottom: 8px;">
           <label>小总结注入深度：</label>
