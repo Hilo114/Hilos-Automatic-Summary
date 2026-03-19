@@ -383,7 +383,8 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     volume_token_threshold: parseInt($('#hs-volume-token-threshold').val() as string) || 8000,
     auto_mini_summary: $('#hs-auto-mini-summary').is(':checked'),
     auto_volume_summary: $('#hs-auto-volume-summary').is(':checked'),
-    volume_trigger_mode: (($('input[name="hs-volume-trigger-mode"]:checked').val() as string) || 'ai') as 'ai' | 'count',
+    volume_trigger_mode: (($('input[name="hs-volume-trigger-mode"]:checked').val() as string) ||
+      'ai') as 'ai' | 'count',
     volume_trigger_count: parseInt($('#hs-volume-trigger-count').val() as string) || 10,
     deferred_summary: $('#hs-deferred-summary').is(':checked'),
     mini_summary_depth: parseInt($('#hs-mini-summary-depth').val() as string) || 9999,
