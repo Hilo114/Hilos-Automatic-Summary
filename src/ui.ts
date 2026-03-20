@@ -730,7 +730,9 @@ async function openSettingsPopup(): Promise<void> {
       $select.append(`<option value="">（手动输入）</option>`);
       for (const model of models) {
         const isSelected = model === currentModel ? ' selected' : '';
-        $select.append(`<option value="${escapeHtml(model)}"${isSelected}>${escapeHtml(model)}</option>`);
+        $select.append(
+          `<option value="${escapeHtml(model)}"${isSelected}>${escapeHtml(model)}</option>`
+        );
       }
 
       toastr.success(`已获取 ${models.length} 个模型`);
