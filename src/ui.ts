@@ -263,9 +263,14 @@ function buildSettingsHtml(data: ScriptDataType): string {
         <div style="margin-bottom: 8px;">
           <label>模型：</label>
           <div style="display: flex; gap: 5px; align-items: center;">
-            <input type="text" id="hs-custom-api-model" value="${escapeHtml(data.custom_api.model)}" style="flex: 1;" placeholder="输入模型名称，如 gpt-4o" list="hs-model-datalist" />
-            <datalist id="hs-model-datalist"></datalist>
+            <select id="hs-custom-api-model-select" style="flex: 1; min-width: 0;">
+              <option value=""${!data.custom_api.model ? ' selected' : ''}>（手动输入）</option>
+              ${data.custom_api.model ? `<option value="${escapeHtml(data.custom_api.model)}" selected>${escapeHtml(data.custom_api.model)}</option>` : ''}
+            </select>
             <button id="hs-fetch-models" class="menu_button" style="white-space: nowrap; padding: 4px 10px;">获取模型</button>
+          </div>
+          <div style="margin-top: 5px;">
+            <input type="text" id="hs-custom-api-model" value="${escapeHtml(data.custom_api.model)}" style="width: 100%;" placeholder="输入模型名称，如 gpt-4o" />
           </div>
         </div>
         <div style="margin-bottom: 8px;">
@@ -706,17 +711,22 @@ async function openSettingsPopup(): Promise<void> {
         return;
       }
 
-      // 填充 datalist
-      const $datalist = $('#hs-model-datalist');
-      $datalist.empty();
+      // 填充 select 下拉框
+      const $select = $('#hs-custom-api-model-select');
+      const currentModel = ($('#hs-custom-api-model').val() as string) || '';
+      $select.empty();
+      $select.append(`<option value="">（手动输入）</option>`);
       for (const model of models) {
-        $datalist.append(`<option value="${escapeHtml(model)}">`);
+        const isSelected = model === currentModel ? ' selected' : '';
+        $select.append(`<option value="${escapeHtml(model)}"${isSelected}>${escapeHtml(model)}</option>`);
       }
 
       toastr.success(`已获取 ${models.length} 个模型`);
 
-      // 聚焦输入框以显示建议列表
-      $('#hs-custom-api-model').trigger('focus');
+      // 如果当前输入的模型在列表中，自动选中
+      if (currentModel && models.includes(currentModel)) {
+        $select.val(currentModel);
+      }
     } catch (e) {
       toastr.error('获取模型列表失败');
       console.error('[自动总结] 获取模型列表失败:', e);
@@ -729,6 +739,14 @@ async function openSettingsPopup(): Promise<void> {
   $overlay.on('change', 'input[name="hs-volume-trigger-mode"]', function () {
     const mode = $(this).val() as string;
     $('#hs-trigger-count-row').toggle(mode === 'count');
+  });
+
+  // 模型下拉框选择同步到文本输入框
+  $overlay.on('change', '#hs-custom-api-model-select', function () {
+    const selected = $(this).val() as string;
+    if (selected) {
+      $('#hs-custom-api-model').val(selected);
+    }
   });
 
   // 添加正则
