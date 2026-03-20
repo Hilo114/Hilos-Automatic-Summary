@@ -127,11 +127,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <select id="hs-worldbook-select" style="flex: 1; min-width: 0; max-width: 200px;">
             <option value=""${!currentWbName ? ' selected' : ''}>（未绑定）</option>
             ${wbNames
-      .map(
-        name =>
-          `<option value="${escapeHtml(name)}" ${currentWbName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
-      )
-      .join('')}
+              .map(
+                name =>
+                  `<option value="${escapeHtml(name)}" ${currentWbName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
+              )
+              .join('')}
           </select>
           <button id="hs-create-worldbook" class="menu_button" style="white-space: nowrap;">一键创建</button>
         </div>
@@ -278,11 +278,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <label>API 源：</label>
           <select id="hs-custom-api-source" style="width: 100%;">
             ${['openai']
-      .map(
-        s =>
-          `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
-      )
-      .join('')}
+              .map(
+                s =>
+                  `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
+              )
+              .join('')}
           </select>
         </div>
         <div style="margin-bottom: 8px;">
@@ -749,7 +749,9 @@ async function openSettingsPopup(): Promise<void> {
       $select.append(`<option value="">（手动输入）</option>`);
       for (const model of models) {
         const isSelected = model === currentModel ? ' selected' : '';
-        $select.append(`<option value="${escapeHtml(model)}"${isSelected}>${escapeHtml(model)}</option>`);
+        $select.append(
+          `<option value="${escapeHtml(model)}"${isSelected}>${escapeHtml(model)}</option>`
+        );
       }
 
       toastr.success(`已获取 ${models.length} 个模型`);

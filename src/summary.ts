@@ -333,7 +333,9 @@ export async function performVolumeSummary(): Promise<void> {
 
     // 直接存入，无需解析范围
     await createVolumeEntry(meta.current_volume, start_id, end_id, content.trim());
-    console.log(`[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}（消息数模式）`);
+    console.log(
+      `[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}（消息数模式）`
+    );
   } else {
     // ===== AI 判断模式：从 AI 输出中解析范围 =====
     const ids = unarchivedEntries
@@ -368,6 +370,8 @@ export async function performVolumeSummary(): Promise<void> {
 
     // 创建卷条目并关闭对应小总结
     await createVolumeEntry(meta.current_volume, start_id, end_id, finalContent);
-    console.log(`[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}（AI模式）`);
+    console.log(
+      `[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}（AI模式）`
+    );
   }
 }
