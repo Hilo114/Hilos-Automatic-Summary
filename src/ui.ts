@@ -14,7 +14,8 @@ import {
 } from '@/worldbook';
 import {
   DEFAULT_MINI_SUMMARY_SYSTEM,
-  DEFAULT_VOLUME_SUMMARY_SYSTEM,
+  DEFAULT_VOLUME_SUMMARY_AI_SYSTEM,
+  DEFAULT_VOLUME_SUMMARY_COUNT_SYSTEM,
   DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM,
 } from '@/prompts';
 
@@ -126,11 +127,11 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <select id="hs-worldbook-select" style="flex: 1; min-width: 0; max-width: 200px;">
             <option value=""${!currentWbName ? ' selected' : ''}>（未绑定）</option>
             ${wbNames
-              .map(
-                name =>
-                  `<option value="${escapeHtml(name)}" ${currentWbName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
-              )
-              .join('')}
+      .map(
+        name =>
+          `<option value="${escapeHtml(name)}" ${currentWbName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`
+      )
+      .join('')}
           </select>
           <button id="hs-create-worldbook" class="menu_button" style="white-space: nowrap;">一键创建</button>
         </div>
@@ -144,16 +145,6 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <input type="number" id="hs-visible-floors" value="${data.visible_floors}" min="1" max="100" style="width: 80px;" />
           <small style="color: #888;">（最近保留多少楼可见）</small>
         </div>
-        <div style="margin-bottom: 8px;">
-          <label>检查间隔：</label>
-          <input type="number" id="hs-check-interval" value="${data.check_interval}" min="5" max="100" style="width: 80px;" />
-          <small style="color: #888;">（每多少个小总结检查一次大总结）</small>
-        </div>
-        <div style="margin-bottom: 8px;">
-          <label>Token 阈值：</label>
-          <input type="number" id="hs-volume-token-threshold" value="${data.volume_token_threshold}" min="1000" max="50000" style="width: 100px;" />
-          <small style="color: #888;">（大总结触发阈值）</small>
-        </div>
         <div class="hs-toggle-row">
           <span class="hs-toggle-label">自动小总结</span>
           <label class="hs-switch"><input type="checkbox" id="hs-auto-mini-summary" ${data.auto_mini_summary ? 'checked' : ''} /><span class="hs-slider"></span></label>
@@ -162,7 +153,7 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <span class="hs-toggle-label">自动大总结</span>
           <label class="hs-switch"><input type="checkbox" id="hs-auto-volume-summary" ${data.auto_volume_summary ? 'checked' : ''} /><span class="hs-slider"></span></label>
         </div>
-        <div style="margin-bottom: 8px; margin-left: 20px; padding: 8px; border-left: 2px solid var(--SmartThemeBorderColor, #444);">
+        <div id="hs-volume-trigger-options" style="margin-bottom: 8px; margin-left: 20px; padding: 8px; border-left: 2px solid var(--SmartThemeBorderColor, #444); display: ${data.auto_volume_summary ? 'block' : 'none'};">
           <label style="margin-right: 12px;">
             <input type="radio" name="hs-volume-trigger-mode" value="ai" ${data.volume_trigger_mode === 'ai' ? 'checked' : ''} />
             AI判断触发
@@ -171,6 +162,18 @@ function buildSettingsHtml(data: ScriptDataType): string {
             <input type="radio" name="hs-volume-trigger-mode" value="count" ${data.volume_trigger_mode === 'count' ? 'checked' : ''} />
             消息数触发
           </label>
+          <div id="hs-trigger-ai-row" style="margin-top: 6px; display: ${data.volume_trigger_mode === 'ai' ? 'block' : 'none'};">
+            <div style="margin-bottom: 6px;">
+              <label>检查间隔：</label>
+              <input type="number" id="hs-check-interval" value="${data.check_interval}" min="5" max="100" style="width: 80px;" />
+              <small style="color: #888;">（每多少个小总结检查一次大总结）</small>
+            </div>
+            <div>
+              <label>Token 阈值：</label>
+              <input type="number" id="hs-volume-token-threshold" value="${data.volume_token_threshold}" min="1000" max="50000" style="width: 100px;" />
+              <small style="color: #888;">（大总结强制触发阈值）</small>
+            </div>
+          </div>
           <div id="hs-trigger-count-row" style="margin-top: 6px; display: ${data.volume_trigger_mode === 'count' ? 'block' : 'none'};">
             <label>触发数量：</label>
             <input type="number" id="hs-volume-trigger-count" value="${data.volume_trigger_count}" min="1" max="500" style="width: 80px;" />
@@ -214,21 +217,6 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <input type="number" id="hs-task-cooldown" value="${data.task_cooldown}" min="0" max="300" style="width: 80px;" />
           <small style="color: #888;">（秒，防并发冲突与 API 速率限制）</small>
         </div>
-        <div style="margin-bottom: 8px;">
-          <label>最大回复 Token：</label>
-          <input type="number" id="hs-max-tokens" value="${data.max_tokens}" min="0" max="128000" style="width: 100px;" />
-          <small style="color: #888;">（0 = 跟随预设，建议 300~2000）</small>
-        </div>
-        <div style="margin-bottom: 8px;">
-          <label>温度：</label>
-          <input type="number" id="hs-temperature" value="${data.temperature}" min="-1" max="2" step="0.01" style="width: 100px;" />
-          <small style="color: #888;">（-1 = 不传递，0~2 = 自定义值）</small>
-        </div>
-        <div style="margin-bottom: 8px;">
-          <label>Top P：</label>
-          <input type="number" id="hs-top-p" value="${data.top_p}" min="-1" max="1" step="0.01" style="width: 100px;" />
-          <small style="color: #888;">（-1 = 不传递，0~1 = 自定义值）</small>
-        </div>
         <!-- 内容捕获标签 -->
         <details style="margin-bottom: 8px;">
           <summary style="cursor: pointer;">内容捕获标签 <small style="color: #888;">（仅总结标签之间的内容，列表为空则总结全部）</small></summary>
@@ -239,13 +227,16 @@ function buildSettingsHtml(data: ScriptDataType): string {
             <button id="hs-add-capture-tag" class="menu_button" style="white-space: nowrap; flex: 1; padding: 5px 0;">+ 添加捕获标签</button>
           </div>
         </details>
-        <div style="margin-bottom: 8px;">
-          <label>
-            <input type="checkbox" id="hs-no-trans-tag" ${data.no_trans_tag ? 'checked' : ''} />
-            防合并标记
-          </label>
-          <input type="text" id="hs-no-trans-tag-value" value="${escapeHtml(data.no_trans_tag_value)}" style="width: 100px; margin-left: 5px;" placeholder="<|no-trans|>" title="自定义防合并标记" />
-          <small style="color: #888; margin-left: 5px;">（kemini或noass脚本开）</small>
+        <div class="hs-toggle-row">
+          <div>
+            <span class="hs-toggle-label">防合并标记</span>
+            <span class="hs-toggle-hint">（kemini或noass脚本开）</span>
+          </div>
+          <label class="hs-switch"><input type="checkbox" id="hs-no-trans-tag" ${data.no_trans_tag ? 'checked' : ''} /><span class="hs-slider"></span></label>
+        </div>
+        <div id="hs-no-trans-tag-value-row" style="margin-bottom: 8px; margin-top: -4px; padding-left: 8px; display: ${data.no_trans_tag ? 'block' : 'none'};">
+          <label>标记内容：</label>
+          <input type="text" id="hs-no-trans-tag-value" value="${escapeHtml(data.no_trans_tag_value)}" style="width: 120px;" placeholder="<|no-trans|>" />
         </div>
       </div>
 
@@ -287,12 +278,31 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <label>API 源：</label>
           <select id="hs-custom-api-source" style="width: 100%;">
             ${['openai']
-              .map(
-                s =>
-                  `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
-              )
-              .join('')}
+      .map(
+        s =>
+          `<option value="${s}" ${data.custom_api.source === s ? 'selected' : ''}>${s}</option>`
+      )
+      .join('')}
           </select>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>最大回复 Token：</label>
+          <input type="number" id="hs-max-tokens" value="${data.max_tokens}" min="0" max="128000" style="width: 100px;" />
+          <small style="color: #888;">（0 = 跟随预设，建议 64000）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>温度：</label>
+          <input type="number" id="hs-temperature" value="${data.temperature}" min="-1" max="2" step="0.01" style="width: 100px;" />
+          <small style="color: #888;">（-1 = 不传递，0~2 = 自定义值）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>Top P：</label>
+          <input type="number" id="hs-top-p" value="${data.top_p}" min="-1" max="1" step="0.01" style="width: 100px;" />
+          <small style="color: #888;">（-1 = 不传递，0~1 = 自定义值）</small>
+        </div>
+        <div class="hs-toggle-row">
+          <span class="hs-toggle-label">流式传输</span>
+          <label class="hs-switch"><input type="checkbox" id="hs-should-stream" ${data.should_stream ? 'checked' : ''} /><span class="hs-slider"></span></label>
         </div>
       </div>
 
@@ -306,9 +316,14 @@ function buildSettingsHtml(data: ScriptDataType): string {
             <small style="color: #888;">（修改后即为自定义；恢复默认请清空提示词并保存）</small>
           </div>
           <div style="margin-bottom: 8px;">
-            <label>大总结系统提示词：</label>
-            <textarea id="hs-prompt-volume" rows="5" style="width: 100%; resize: vertical;" placeholder="使用默认提示词">${escapeHtml(data.custom_prompts.volume_summary_system || DEFAULT_VOLUME_SUMMARY_SYSTEM)}</textarea>
-            <small style="color: #888;">（修改后即为自定义；恢复默认请清空提示词并保存）</small>
+            <label>大总结系统提示词（AI判断模式）：</label>
+            <textarea id="hs-prompt-volume-ai" rows="5" style="width: 100%; resize: vertical;" placeholder="使用默认提示词">${escapeHtml(data.custom_prompts.volume_summary_system_ai || DEFAULT_VOLUME_SUMMARY_AI_SYSTEM)}</textarea>
+            <small style="color: #888;">（AI模式专用，需要输出范围标记）</small>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label>大总结系统提示词（消息数模式）：</label>
+            <textarea id="hs-prompt-volume-count" rows="5" style="width: 100%; resize: vertical;" placeholder="使用默认提示词">${escapeHtml(data.custom_prompts.volume_summary_system_count || DEFAULT_VOLUME_SUMMARY_COUNT_SYSTEM)}</textarea>
+            <small style="color: #888;">（消息数模式专用，无需输出范围标记）</small>
           </div>
           <div style="margin-bottom: 8px;">
             <label>卷完结检测系统提示词：</label>
@@ -409,7 +424,8 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
   });
 
   const miniPrompt = (($('#hs-prompt-mini').val() as string) || '').trim();
-  const volumePrompt = (($('#hs-prompt-volume').val() as string) || '').trim();
+  const volumeAiPrompt = (($('#hs-prompt-volume-ai').val() as string) || '').trim();
+  const volumeCountPrompt = (($('#hs-prompt-volume-count').val() as string) || '').trim();
   const completionPrompt = (($('#hs-prompt-completion').val() as string) || '').trim();
 
   return {
@@ -419,8 +435,8 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     auto_mini_summary: $('#hs-auto-mini-summary').is(':checked'),
     auto_volume_summary: $('#hs-auto-volume-summary').is(':checked'),
     volume_trigger_mode: (($('input[name="hs-volume-trigger-mode"]:checked').val() as string) ||
-      'ai') as 'ai' | 'count',
-    volume_trigger_count: parseInt($('#hs-volume-trigger-count').val() as string) || 10,
+      'count') as 'ai' | 'count',
+    volume_trigger_count: parseInt($('#hs-volume-trigger-count').val() as string) || 30,
     deferred_summary: $('#hs-deferred-summary').is(':checked'),
     mini_summary_depth: parseInt($('#hs-mini-summary-depth').val() as string) || 9999,
     volume_summary_depth: parseInt($('#hs-volume-summary-depth').val() as string) || 9999,
@@ -431,6 +447,7 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     max_tokens: parseInt($('#hs-max-tokens').val() as string) || 0,
     temperature: parseFloat($('#hs-temperature').val() as string),
     top_p: parseFloat($('#hs-top-p').val() as string),
+    should_stream: $('#hs-should-stream').is(':checked'),
     capture_tags: collectCaptureTagsFromPopup(),
     no_trans_tag: $('#hs-no-trans-tag').is(':checked'),
     no_trans_tag_value: (($('#hs-no-trans-tag-value').val() as string) || '').trim(),
@@ -442,8 +459,10 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     },
     custom_prompts: {
       mini_summary_system: miniPrompt === DEFAULT_MINI_SUMMARY_SYSTEM.trim() ? '' : miniPrompt,
-      volume_summary_system:
-        volumePrompt === DEFAULT_VOLUME_SUMMARY_SYSTEM.trim() ? '' : volumePrompt,
+      volume_summary_system_ai:
+        volumeAiPrompt === DEFAULT_VOLUME_SUMMARY_AI_SYSTEM.trim() ? '' : volumeAiPrompt,
+      volume_summary_system_count:
+        volumeCountPrompt === DEFAULT_VOLUME_SUMMARY_COUNT_SYSTEM.trim() ? '' : volumeCountPrompt,
       volume_completion_check_system:
         completionPrompt === DEFAULT_VOLUME_COMPLETION_CHECK_SYSTEM.trim() ? '' : completionPrompt,
     },
@@ -750,7 +769,18 @@ async function openSettingsPopup(): Promise<void> {
   // 触发模式切换
   $overlay.on('change', 'input[name="hs-volume-trigger-mode"]', function () {
     const mode = $(this).val() as string;
+    $('#hs-trigger-ai-row').toggle(mode === 'ai');
     $('#hs-trigger-count-row').toggle(mode === 'count');
+  });
+
+  // 自动大总结开关切换
+  $overlay.on('change', '#hs-auto-volume-summary', function () {
+    $('#hs-volume-trigger-options').toggle($(this).is(':checked'));
+  });
+
+  // 防合并标记开关切换
+  $overlay.on('change', '#hs-no-trans-tag', function () {
+    $('#hs-no-trans-tag-value-row').toggle($(this).is(':checked'));
   });
 
   // 模型下拉框选择同步到文本输入框

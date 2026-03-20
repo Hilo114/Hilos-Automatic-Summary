@@ -135,6 +135,7 @@ async function callAI(
 
   const generateConfig: Record<string, any> = {
     should_silence: true,
+    should_stream: settings.should_stream,
     ordered_prompts: [
       { role: 'system', content: wrapContent(systemPrompt) },
       { role: 'user', content: wrapContent(userPrompt) },
@@ -275,7 +276,8 @@ export async function shouldTriggerVolumeSummary(): Promise<boolean> {
 
 /** 生成大总结内容 */
 export async function generateVolumeSummaryContent(
-  mini_summaries: WorldbookEntry[]
+  mini_summaries: WorldbookEntry[],
+  mode: 'ai' | 'count'
 ): Promise<string> {
   const settings = getSettings();
   const volumes = await getVolumes();
@@ -293,7 +295,7 @@ export async function generateVolumeSummaryContent(
     })
     .map(e => e.content);
 
-  const prompt = getVolumeSummaryPrompt(miniContents, previousVolumeContents);
+  const prompt = getVolumeSummaryPrompt(miniContents, previousVolumeContents, mode);
   return await callAI(prompt.system, prompt.user, settings);
 }
 
@@ -305,6 +307,7 @@ export async function performVolumeSummary(): Promise<void> {
     return;
   }
 
+  const settings = getSettings();
   const meta = await getMetaData();
   const unarchivedEntries = await getUnarchivedMiniSummaries();
 
@@ -314,39 +317,57 @@ export async function performVolumeSummary(): Promise<void> {
   const shouldTrigger = await shouldTriggerVolumeSummary();
   if (!shouldTrigger) return;
 
-  // 提取楼层 ID 范围
-  const ids = unarchivedEntries
-    .map(e => parseInt(e.name.match(/楼层(\d+)/)![1]))
-    .sort((a, b) => a - b);
+  const mode = settings.volume_trigger_mode;
 
-  let start_id = ids[0];
-  let end_id = ids[ids.length - 1];
+  if (mode === 'count') {
+    // ===== 消息数模式：脚本自动确定范围 =====
+    const ids = unarchivedEntries
+      .map(e => parseInt(e.name.match(/楼层(\d+)/)![1]))
+      .sort((a, b) => a - b);
 
-  // 生成大总结
-  const content = await generateVolumeSummaryContent(unarchivedEntries);
+    const start_id = ids[0];
+    const end_id = ids[ids.length - 1];
 
-  // 尝试提取设定的范围
-  const match = content.match(/摘要(\d+)-摘要(\d+)/);
-  if (match) {
-    const parsedStart = parseInt(match[1]);
-    const parsedEnd = parseInt(match[2]);
-    if (parsedStart <= parsedEnd) {
-      start_id = parsedStart;
-      end_id = parsedEnd;
-    } else {
-      console.warn(
-        `[自动总结] AI 输出的范围(摘要${parsedStart}-摘要${parsedEnd})无效，回退使用全范围`
-      );
-    }
+    // 生成大总结（不要求 AI 输出范围标记）
+    const content = await generateVolumeSummaryContent(unarchivedEntries, 'count');
+
+    // 直接存入，无需解析范围
+    await createVolumeEntry(meta.current_volume, start_id, end_id, content.trim());
+    console.log(`[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}（消息数模式）`);
   } else {
-    console.warn('[自动总结] 卷总结中未找到有效的首尾范围标记，回退使用全范围');
+    // ===== AI 判断模式：从 AI 输出中解析范围 =====
+    const ids = unarchivedEntries
+      .map(e => parseInt(e.name.match(/楼层(\d+)/)![1]))
+      .sort((a, b) => a - b);
+
+    let start_id = ids[0];
+    let end_id = ids[ids.length - 1];
+
+    // 生成大总结
+    const content = await generateVolumeSummaryContent(unarchivedEntries, 'ai');
+
+    // 尝试提取设定的范围
+    const match = content.match(/摘要(\d+)-摘要(\d+)/);
+    if (match) {
+      const parsedStart = parseInt(match[1]);
+      const parsedEnd = parseInt(match[2]);
+      if (parsedStart <= parsedEnd) {
+        start_id = parsedStart;
+        end_id = parsedEnd;
+      } else {
+        console.warn(
+          `[自动总结] AI 输出的范围(摘要${parsedStart}-摘要${parsedEnd})无效，回退使用全范围`
+        );
+      }
+    } else {
+      console.warn('[自动总结] 卷总结中未找到有效的首尾范围标记，回退使用全范围');
+    }
+
+    // 清除结尾的指定标记行并存入
+    const finalContent = content.replace(/\s*摘要\d+-摘要\d+\s*$/, '').trim();
+
+    // 创建卷条目并关闭对应小总结
+    await createVolumeEntry(meta.current_volume, start_id, end_id, finalContent);
+    console.log(`[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}（AI模式）`);
   }
-
-  // 清除结尾的指定标记行并存入
-  const finalContent = content.replace(/\s*摘要\d+-摘要\d+\s*$/, '').trim();
-
-  // 创建卷条目并关闭对应小总结
-  await createVolumeEntry(meta.current_volume, start_id, end_id, finalContent);
-
-  console.log(`[自动总结] 已归档卷${meta.current_volume}: 楼层${start_id}~楼层${end_id}`);
 }

@@ -82,12 +82,12 @@ export const ScriptData = z
     /** 是否启用自动大总结 */
     auto_volume_summary: z.boolean().prefault(true),
     /** 大总结触发模式：ai = AI判断 + token阈值，count = 小总结数量达标即触发 */
-    volume_trigger_mode: z.enum(['ai', 'count']).prefault('ai'),
+    volume_trigger_mode: z.enum(['ai', 'count']).prefault('count'),
     /** 消息数模式下，每多少个小总结触发一次大总结 */
     volume_trigger_count: z.coerce
       .number()
       .transform(v => _.clamp(v, 1, 500))
-      .prefault(10),
+      .prefault(30),
     /** 小总结注入深度（at_depth） */
     mini_summary_depth: z.coerce
       .number()
@@ -135,6 +135,8 @@ export const ScriptData = z
       .transform(v => Math.round(v * 100) / 100)
       .transform(v => (v < 0 ? -1 : _.clamp(v, 0, 1)))
       .prefault(-1),
+    /** 是否启用流式传输 */
+    should_stream: z.boolean().prefault(false),
     /** API 配置 */
     custom_api: z
       .object({
@@ -164,7 +166,7 @@ export const ScriptData = z
       )
       .prefault([]),
     /** 是否启用后置总结（延迟到下一条消息到达时才对上一条进行总结） */
-    deferred_summary: z.boolean().prefault(false),
+    deferred_summary: z.boolean().prefault(true),
     /** 是否启用防合并标记（kemini/noass脚本用到） */
     no_trans_tag: z.boolean().prefault(false),
     /** 防合并标记内容 */
@@ -173,7 +175,8 @@ export const ScriptData = z
     custom_prompts: z
       .object({
         mini_summary_system: z.string().prefault(''),
-        volume_summary_system: z.string().prefault(''),
+        volume_summary_system_ai: z.string().prefault(''),
+        volume_summary_system_count: z.string().prefault(''),
         volume_completion_check_system: z.string().prefault(''),
       })
       .prefault({}),
