@@ -219,6 +219,16 @@ function buildSettingsHtml(data: ScriptDataType): string {
           <input type="number" id="hs-max-tokens" value="${data.max_tokens}" min="0" max="128000" style="width: 100px;" />
           <small style="color: #888;">（0 = 跟随预设，建议 300~2000）</small>
         </div>
+        <div style="margin-bottom: 8px;">
+          <label>温度：</label>
+          <input type="number" id="hs-temperature" value="${data.temperature}" min="-1" max="2" step="0.01" style="width: 100px;" />
+          <small style="color: #888;">（-1 = 不传递，0~2 = 自定义值）</small>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label>Top P：</label>
+          <input type="number" id="hs-top-p" value="${data.top_p}" min="-1" max="1" step="0.01" style="width: 100px;" />
+          <small style="color: #888;">（-1 = 不传递，0~1 = 自定义值）</small>
+        </div>
         <!-- 内容捕获标签 -->
         <details style="margin-bottom: 8px;">
           <summary style="cursor: pointer;">内容捕获标签 <small style="color: #888;">（仅总结标签之间的内容，列表为空则总结全部）</small></summary>
@@ -419,6 +429,8 @@ function collectSettingsFromPopup(): Partial<ScriptDataType> {
     ignore_floors: parseInt($('#hs-ignore-floors').val() as string) || 0,
     task_cooldown: parseInt($('#hs-task-cooldown').val() as string) || 5,
     max_tokens: parseInt($('#hs-max-tokens').val() as string) || 0,
+    temperature: parseFloat($('#hs-temperature').val() as string),
+    top_p: parseFloat($('#hs-top-p').val() as string),
     capture_tags: collectCaptureTagsFromPopup(),
     no_trans_tag: $('#hs-no-trans-tag').is(':checked'),
     no_trans_tag_value: (($('#hs-no-trans-tag-value').val() as string) || '').trim(),

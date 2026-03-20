@@ -123,6 +123,18 @@ export const ScriptData = z
       .number()
       .transform(v => Math.max(0, Math.round(v)))
       .prefault(0),
+    /** 温度（-1 = 不传递，0~2 = 自定义值） */
+    temperature: z.coerce
+      .number()
+      .transform(v => Math.round(v * 100) / 100)
+      .transform(v => (v < 0 ? -1 : _.clamp(v, 0, 2)))
+      .prefault(-1),
+    /** Top P（-1 = 不传递，0~1 = 自定义值） */
+    top_p: z.coerce
+      .number()
+      .transform(v => Math.round(v * 100) / 100)
+      .transform(v => (v < 0 ? -1 : _.clamp(v, 0, 1)))
+      .prefault(-1),
     /** API 配置 */
     custom_api: z
       .object({

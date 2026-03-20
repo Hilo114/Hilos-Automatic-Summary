@@ -88,6 +88,18 @@ export function cleanMessage(message: string, settings: ScriptDataType): string 
 
 // ========== AI 生成辅助 ==========
 
+/** 将 -1 映射为 'unset'，>=0 传递实际值 */
+function mapParam(value: number): 'unset' | number {
+  return value < 0 ? 'unset' : value;
+}
+
+/** 将采样参数（temperature / top_p）写入 API 配置对象 */
+function applySamplingParams(target: Record<string, any>, settings: ScriptDataType): void {
+  if (settings.max_tokens > 0) target.max_tokens = settings.max_tokens;
+  target.temperature = mapParam(settings.temperature);
+  target.top_p = mapParam(settings.top_p);
+}
+
 /** 构建 generateRaw 的 API 配置 */
 function buildCustomApi(settings: ScriptDataType): Record<string, any> | undefined {
   if (!settings.custom_api.apiurl) return undefined;
@@ -97,11 +109,15 @@ function buildCustomApi(settings: ScriptDataType): Record<string, any> | undefin
     model: settings.custom_api.model,
     source: settings.custom_api.source,
   };
-  // 将 max_tokens 传递给自定义 API
-  if (settings.max_tokens > 0) {
-    api.max_tokens = settings.max_tokens;
-  }
+  applySamplingParams(api, settings);
   return api;
+}
+
+/** 构建覆盖参数（用于无自定义 API 时） */
+function buildOverrides(settings: ScriptDataType): Record<string, any> {
+  const overrides: Record<string, any> = {};
+  applySamplingParams(overrides, settings);
+  return overrides;
 }
 
 /** 调用 AI 生成文本 */
@@ -127,9 +143,9 @@ async function callAI(
   const customApi = buildCustomApi(settings);
   if (customApi) {
     generateConfig.custom_api = customApi;
-  } else if (settings.max_tokens > 0) {
-    // 即使没有自定义 API，也可以通过 custom_api 传递 max_tokens
-    generateConfig.custom_api = { max_tokens: settings.max_tokens };
+  } else {
+    // 即使没有自定义 API，也通过 custom_api 传递参数覆盖（含 top_p: 'unset'）
+    generateConfig.custom_api = buildOverrides(settings);
   }
   const result = await generateRaw(generateConfig as any);
   return result;
