@@ -108,7 +108,8 @@ type WorldbookEntry = {
       | 'after_example_messages'
       | 'before_author_note'
       | 'after_author_note'
-      | 'at_depth';
+      | 'at_depth'
+      | 'outlet';
     /** 该条目的消息身份, 仅位置类型为 `'at_depth'` 时有效 */
     role: 'system' | 'assistant' | 'user';
     /** 该条目要插入的深度, 仅位置类型为 `'at_depth'` 时有效 */
@@ -141,6 +142,17 @@ type WorldbookEntry = {
   /** 额外字段, 用于为世界书条目绑定额外数据 */
   extra?: Record<string, any>;
 };
+
+/**
+ * 获取 `worldbook_name` 世界书的内容
+ *
+ * @param worldbook_name 世界书名称
+ *
+ * @returns 世界书内容
+ *
+ * @throws 如果世界书不存在, 将会抛出错误
+ */
+declare function getWorldbook(worldbook_name: string): Promise<WorldbookEntry[]>;
 
 /**
  * 创建新的世界书
@@ -179,17 +191,6 @@ declare function deleteWorldbook(worldbook_name: string): Promise<boolean>;
 
 // TODO: rename 需要处理世界书绑定
 // export function renameWorldbook(old_name: string, new_name: string): boolean;
-
-/**
- * 获取 `worldbook_name` 世界书的内容
- *
- * @param worldbook_name 世界书名称
- *
- * @returns 世界书内容
- *
- * @throws 如果世界书不存在, 将会抛出错误
- */
-declare function getWorldbook(worldbook_name: string): Promise<WorldbookEntry[]>;
 
 interface ReplaceWorldbookOptions {
   /** 对于对世界书的更改, 世界书编辑器应该防抖渲染 (debounced) 还是立即渲染 (immediate)? 默认为性能更好的防抖渲染 */
