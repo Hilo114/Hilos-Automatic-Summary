@@ -38,7 +38,7 @@
     "ts-jest": "^29.4.12",
     "type-fest": "^5.10.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.70.0",
+    "typescript-eslint": "^8.70.1",
     "vite": "^7.3.6",
     "vue": "^3.5.43",
     "zod": "^4.6.5"
